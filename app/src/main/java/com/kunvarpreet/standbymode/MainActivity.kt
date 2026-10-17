@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -22,8 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kunvarpreet.standbymode.core.preferences.AccentColorOption
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
+import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.rememberLiveTime
@@ -36,8 +35,6 @@ import com.kunvarpreet.standbymode.ui.settings.SettingsScreen
 import com.kunvarpreet.standbymode.ui.theme.StandByBackground
 import com.kunvarpreet.standbymode.ui.theme.StandByModeTheme
 import kotlinx.coroutines.launch
-
-import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 
 /**
  * Root navigation destinations.

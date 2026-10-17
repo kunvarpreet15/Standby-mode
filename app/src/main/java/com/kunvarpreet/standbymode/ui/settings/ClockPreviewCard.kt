@@ -37,13 +37,14 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
  */
 @Composable
 fun ClockPreviewCard(
+    modifier: Modifier = Modifier,
     clockFace: ClockFaceType,
     formattedTime: FormattedTime,
     showSeconds: Boolean,
     showDate: Boolean,
     accentColor: Color,
-    isNightMode: Boolean = false,
-    modifier: Modifier = Modifier
+    isNightMode: Boolean = false
+
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),

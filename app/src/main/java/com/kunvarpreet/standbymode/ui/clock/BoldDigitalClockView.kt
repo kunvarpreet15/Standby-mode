@@ -1,7 +1,6 @@
 package com.kunvarpreet.standbymode.ui.clock
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,13 +35,13 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
  */
 @Composable
 fun BoldDigitalClockView(
+    modifier: Modifier = Modifier,
     hours: String,
     minutes: String,
     seconds: String? = null,
     amPm: String? = null,
     accentColor: Color = StandByAccentOrange,
-    isNightMode: Boolean = false,
-    modifier: Modifier = Modifier
+    isNightMode: Boolean = false
 ) {
     val digitsColor = if (isNightMode) StandByNightText else StandByTextPrimary
     val colonColor = if (isNightMode) StandByNightText else accentColor

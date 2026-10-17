@@ -7,7 +7,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -20,7 +19,7 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
 
 /**
  * C07: DatePill
- * Clean, ambient capsule showing day of week and date (e.g. "WED, OCT 18").
+ * Clean, ambient capsule showing day of week and date (e.g. "SUNDAY, OCT 18").
  */
 @Composable
 fun DatePill(

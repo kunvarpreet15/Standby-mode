@@ -36,7 +36,6 @@ import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.FormattedTime
 import com.kunvarpreet.standbymode.ui.theme.StandByBackground
 import com.kunvarpreet.standbymode.ui.theme.StandByBorder
-import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
 
 /**
