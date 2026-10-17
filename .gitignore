@@ -32,3 +32,6 @@ signing.properties
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+design/
+replica/
