@@ -65,6 +65,7 @@ fun FlipDigitCard(
 ) {
     val resolvedCardColor = if (isNightMode) StandByNightSurface else cardColor
     val resolvedTextColor = if (isNightMode) StandByNightText else textColor
+    val resolvedBorderColor = if (isNightMode) StandByNightSurface else StandByBorder
 
     var currentDigit by remember { mutableStateOf(digit) }
     var previousDigit by remember { mutableStateOf(digit) }
@@ -115,6 +116,7 @@ fun FlipDigitCard(
                 fullHeight = cardHeight,
                 cornerRadius = cornerRadius,
                 cardColor = resolvedCardColor,
+                borderColor = resolvedBorderColor,
                 style = digitStyle,
                 textMeasurer = textMeasurer
             )
@@ -127,6 +129,7 @@ fun FlipDigitCard(
                 fullHeight = cardHeight,
                 cornerRadius = cornerRadius,
                 cardColor = resolvedCardColor,
+                borderColor = resolvedBorderColor,
                 style = digitStyle,
                 textMeasurer = textMeasurer
             )
@@ -159,6 +162,7 @@ fun FlipDigitCard(
                         fullHeight = cardHeight,
                         cornerRadius = cornerRadius,
                         cardColor = resolvedCardColor,
+                        borderColor = resolvedBorderColor,
                         style = digitStyle,
                         textMeasurer = textMeasurer
                     )
@@ -200,6 +204,7 @@ fun FlipDigitCard(
                         fullHeight = cardHeight,
                         cornerRadius = cornerRadius,
                         cardColor = resolvedCardColor,
+                        borderColor = resolvedBorderColor,
                         style = digitStyle,
                         textMeasurer = textMeasurer
                     )
@@ -263,6 +268,7 @@ private fun UpperFlap(
     fullHeight: Dp,
     cornerRadius: Dp,
     cardColor: Color,
+    borderColor: Color = StandByBorder,
     style: TextStyle,
     textMeasurer: TextMeasurer
 ) {
@@ -285,7 +291,7 @@ private fun UpperFlap(
             .background(cardColor)
             .border(
                 width = 1.dp,
-                color = StandByBorder,
+                color = borderColor,
                 shape = RoundedCornerShape(
                     topStart = cornerRadius,
                     topEnd = cornerRadius,
@@ -318,6 +324,7 @@ private fun LowerFlap(
     fullHeight: Dp,
     cornerRadius: Dp,
     cardColor: Color,
+    borderColor: Color = StandByBorder,
     style: TextStyle,
     textMeasurer: TextMeasurer
 ) {
@@ -340,7 +347,7 @@ private fun LowerFlap(
             .background(cardColor)
             .border(
                 width = 1.dp,
-                color = StandByBorder,
+                color = borderColor,
                 shape = RoundedCornerShape(
                     topStart = 0.dp,
                     topEnd = 0.dp,

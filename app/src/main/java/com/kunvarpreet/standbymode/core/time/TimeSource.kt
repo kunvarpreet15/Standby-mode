@@ -43,7 +43,7 @@ fun timeFlow(
         addAction(Intent.ACTION_TIMEZONE_CHANGED)
     }
 
-    context.registerReceiver(receiver, filter)
+    context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
 
     // Initial emission on collection
     trySend(Instant.now())

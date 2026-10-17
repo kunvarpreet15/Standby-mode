@@ -55,38 +55,46 @@ class PreferencesRepository(private val context: Context) {
             )
         }
 
+    private suspend fun safeEdit(action: suspend (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+        try {
+            context.clockDataStore.edit(action)
+        } catch (e: IOException) {
+            android.util.Log.e("PreferencesRepository", "I/O error updating clock preferences in DataStore", e)
+        }
+    }
+
     suspend fun updateClockFace(clockFace: ClockFaceType) {
-        context.clockDataStore.edit { preferences ->
+        safeEdit { preferences ->
             preferences[PreferencesKeys.CLOCK_FACE] = clockFace.name
         }
     }
 
     suspend fun update24Hour(is24Hour: Boolean) {
-        context.clockDataStore.edit { preferences ->
+        safeEdit { preferences ->
             preferences[PreferencesKeys.IS_24_HOUR] = is24Hour
         }
     }
 
     suspend fun updateShowSeconds(showSeconds: Boolean) {
-        context.clockDataStore.edit { preferences ->
+        safeEdit { preferences ->
             preferences[PreferencesKeys.SHOW_SECONDS] = showSeconds
         }
     }
 
     suspend fun updateShowDate(showDate: Boolean) {
-        context.clockDataStore.edit { preferences ->
+        safeEdit { preferences ->
             preferences[PreferencesKeys.SHOW_DATE] = showDate
         }
     }
 
     suspend fun updateAccentColor(accentColor: AccentColorOption) {
-        context.clockDataStore.edit { preferences ->
+        safeEdit { preferences ->
             preferences[PreferencesKeys.ACCENT_COLOR] = accentColor.name
         }
     }
 
     suspend fun updateNightMode(isNightModeEnabled: Boolean) {
-        context.clockDataStore.edit { preferences ->
+        safeEdit { preferences ->
             preferences[PreferencesKeys.IS_NIGHT_MODE_ENABLED] = isNightModeEnabled
         }
     }
