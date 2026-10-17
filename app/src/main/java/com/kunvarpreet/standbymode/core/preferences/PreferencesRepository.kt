@@ -1,0 +1,93 @@
+package com.kunvarpreet.standbymode.core.preferences
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import java.io.IOException
+
+val Context.clockDataStore: DataStore<Preferences> by preferencesDataStore(name = "standby_clock_preferences")
+
+/**
+ * Repository managing persistent clock preferences via Jetpack DataStore.
+ */
+class PreferencesRepository(private val context: Context) {
+
+    private object PreferencesKeys {
+        val CLOCK_FACE = stringPreferencesKey("clock_face")
+        val IS_24_HOUR = booleanPreferencesKey("is_24_hour")
+        val SHOW_SECONDS = booleanPreferencesKey("show_seconds")
+        val SHOW_DATE = booleanPreferencesKey("show_date")
+        val ACCENT_COLOR = stringPreferencesKey("accent_color")
+        val IS_NIGHT_MODE_ENABLED = booleanPreferencesKey("is_night_mode_enabled")
+    }
+
+    val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            val clockFaceName = preferences[PreferencesKeys.CLOCK_FACE]
+            val is24Hour = preferences[PreferencesKeys.IS_24_HOUR] ?: false
+            val showSeconds = preferences[PreferencesKeys.SHOW_SECONDS] ?: true
+            val showDate = preferences[PreferencesKeys.SHOW_DATE] ?: true
+            val accentColorName = preferences[PreferencesKeys.ACCENT_COLOR]
+            val isNightModeEnabled = preferences[PreferencesKeys.IS_NIGHT_MODE_ENABLED] ?: false
+
+            UserClockPreferences(
+                clockFace = ClockFaceType.fromName(clockFaceName),
+                is24Hour = is24Hour,
+                showSeconds = showSeconds,
+                showDate = showDate,
+                accentColor = AccentColorOption.fromName(accentColorName),
+                isNightModeEnabled = isNightModeEnabled
+            )
+        }
+
+    suspend fun updateClockFace(clockFace: ClockFaceType) {
+        context.clockDataStore.edit { preferences ->
+            preferences[PreferencesKeys.CLOCK_FACE] = clockFace.name
+        }
+    }
+
+    suspend fun update24Hour(is24Hour: Boolean) {
+        context.clockDataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_24_HOUR] = is24Hour
+        }
+    }
+
+    suspend fun updateShowSeconds(showSeconds: Boolean) {
+        context.clockDataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_SECONDS] = showSeconds
+        }
+    }
+
+    suspend fun updateShowDate(showDate: Boolean) {
+        context.clockDataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_DATE] = showDate
+        }
+    }
+
+    suspend fun updateAccentColor(accentColor: AccentColorOption) {
+        context.clockDataStore.edit { preferences ->
+            preferences[PreferencesKeys.ACCENT_COLOR] = accentColor.name
+        }
+    }
+
+    suspend fun updateNightMode(isNightModeEnabled: Boolean) {
+        context.clockDataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_NIGHT_MODE_ENABLED] = isNightModeEnabled
+        }
+    }
+}
