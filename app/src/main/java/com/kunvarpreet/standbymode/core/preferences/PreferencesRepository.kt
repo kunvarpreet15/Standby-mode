@@ -40,7 +40,7 @@ class PreferencesRepository(private val context: Context) {
         .map { preferences ->
             val clockFaceName = preferences[PreferencesKeys.CLOCK_FACE]
             val is24Hour = preferences[PreferencesKeys.IS_24_HOUR] ?: false
-            val showSeconds = preferences[PreferencesKeys.SHOW_SECONDS] ?: true
+            val showSeconds = preferences[PreferencesKeys.SHOW_SECONDS] ?: false
             val showDate = preferences[PreferencesKeys.SHOW_DATE] ?: true
             val accentColorName = preferences[PreferencesKeys.ACCENT_COLOR]
             val isNightModeEnabled = preferences[PreferencesKeys.IS_NIGHT_MODE_ENABLED] ?: false

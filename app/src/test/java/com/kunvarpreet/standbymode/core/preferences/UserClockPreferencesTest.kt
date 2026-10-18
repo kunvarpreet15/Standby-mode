@@ -17,7 +17,7 @@ class UserClockPreferencesTest {
         val prefs = UserClockPreferences()
         assertEquals(ClockFaceType.BOLD_DIGITAL, prefs.clockFace)
         assertEquals(false, prefs.is24Hour)
-        assertEquals(true, prefs.showSeconds)
+        assertEquals(false, prefs.showSeconds)
         assertEquals(true, prefs.showDate)
         assertEquals(AccentColorOption.ORANGE, prefs.accentColor)
         assertEquals(false, prefs.isNightModeEnabled)
@@ -85,6 +85,40 @@ class UserClockPreferencesTest {
         assertEquals(AccentColorOption.BLUE.color, palette.accentColor)
         assertEquals(StandBySurfaceCard, palette.surface)
         assertEquals(StandByBorder, palette.border)
+    }
+
+    @Test
+    fun nightModeColorTokens_matchCanonicalHexValues() {
+        assertEquals(androidx.compose.ui.graphics.Color(0xFF000000), com.kunvarpreet.standbymode.ui.theme.StandByNightBackground)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFFF453A), StandByNightText)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFB33939), StandByNightTextMuted)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFF1A0505), StandByNightSurface)
+    }
+
+    @Test
+    fun normalAccentColorTokens_matchCanonicalHexValuesAndDefault() {
+        // Assert canonical hex string and Color values for all five curated accent options
+        assertEquals("#FFFFFF", AccentColorOption.WHITE.hexCode)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFFFFFFF), AccentColorOption.WHITE.color)
+
+        assertEquals("#FF6B35", AccentColorOption.ORANGE.hexCode)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFFF6B35), AccentColorOption.ORANGE.color)
+
+        assertEquals("#00A8E8", AccentColorOption.BLUE.hexCode)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFF00A8E8), AccentColorOption.BLUE.color)
+
+        assertEquals("#76FF03", AccentColorOption.GREEN.hexCode)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFF76FF03), AccentColorOption.GREEN.color)
+
+        assertEquals("#AF52DE", AccentColorOption.PURPLE.hexCode)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFAF52DE), AccentColorOption.PURPLE.color)
+
+        // Verify default preference resolves to Sunset Orange (#FF6B35)
+        val defaultPrefs = UserClockPreferences()
+        assertEquals(AccentColorOption.ORANGE, defaultPrefs.accentColor)
+        assertEquals("Sunset Orange", defaultPrefs.accentColor.displayName)
+        assertEquals("#FF6B35", defaultPrefs.accentColor.hexCode)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFFF6B35), defaultPrefs.accentColor.color)
     }
 }
 

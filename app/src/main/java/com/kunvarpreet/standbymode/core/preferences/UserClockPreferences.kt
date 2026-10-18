@@ -93,7 +93,7 @@ data class ClockThemePalette(
 data class UserClockPreferences(
     val clockFace: ClockFaceType = ClockFaceType.BOLD_DIGITAL,
     val is24Hour: Boolean = false,
-    val showSeconds: Boolean = true,
+    val showSeconds: Boolean = false,
     val showDate: Boolean = true,
     val accentColor: AccentColorOption = AccentColorOption.ORANGE,
     val isNightModeEnabled: Boolean = false
