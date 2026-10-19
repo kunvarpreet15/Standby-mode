@@ -96,5 +96,6 @@ data class UserClockPreferences(
     val showSeconds: Boolean = false,
     val showDate: Boolean = true,
     val accentColor: AccentColorOption = AccentColorOption.ORANGE,
-    val isNightModeEnabled: Boolean = false
+    val isNightModeEnabled: Boolean = false,
+    val showChargingNotification: Boolean = false
 )

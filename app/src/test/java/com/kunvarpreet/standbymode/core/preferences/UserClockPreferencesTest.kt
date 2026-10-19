@@ -21,6 +21,7 @@ class UserClockPreferencesTest {
         assertEquals(true, prefs.showDate)
         assertEquals(AccentColorOption.ORANGE, prefs.accentColor)
         assertEquals(false, prefs.isNightModeEnabled)
+        assertEquals(false, prefs.showChargingNotification)
     }
 
     @Test

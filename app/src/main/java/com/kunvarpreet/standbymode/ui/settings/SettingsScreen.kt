@@ -1,5 +1,12 @@
 package com.kunvarpreet.standbymode.ui.settings
 
+import android.Manifest
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,27 +22,38 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.preferences.AccentColorOption
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.FormattedTime
 import com.kunvarpreet.standbymode.ui.theme.StandByBackground
 import com.kunvarpreet.standbymode.ui.theme.StandByBorder
+import com.kunvarpreet.standbymode.ui.theme.StandBySurfaceCard
+import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
 
 /**
@@ -53,10 +71,112 @@ fun SettingsScreen(
     onShowDateChanged: (Boolean) -> Unit,
     onAccentColorChanged: (AccentColorOption) -> Unit,
     onNightModeChanged: (Boolean) -> Unit,
+    onShowChargingNotificationChanged: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val accentColor = preferences.accentColor.color
+
+    var showPermissionExplanationDialog by remember { mutableStateOf(false) }
+    var explanationDialogTitle by remember { mutableStateOf("") }
+    var explanationDialogMessage by remember { mutableStateOf("") }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            if (manager?.areNotificationsEnabled() == false) {
+                explanationDialogTitle = "Notifications Blocked"
+                explanationDialogMessage = "Notifications are blocked in your device settings. Please enable notifications for StandBy Mode in Android Settings."
+                showPermissionExplanationDialog = true
+            } else {
+                onShowChargingNotificationChanged(true)
+                if (ChargingNotificationManager.isDeviceCharging(context)) {
+                    ChargingNotificationManager.postChargingNotification(context)
+                }
+            }
+        } else {
+            explanationDialogTitle = "Notification Permission Required"
+            explanationDialogMessage = "StandBy Mode requires notification permission to post a charging alert when your device is connected to power. Please grant notification permission to use this feature."
+            showPermissionExplanationDialog = true
+        }
+    }
+
+    val onToggleChargingNotification: (Boolean) -> Unit = { shouldEnable ->
+        if (shouldEnable) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val systemAllowed = manager?.areNotificationsEnabled() ?: false
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (!hasPermission) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else if (!systemAllowed) {
+                    explanationDialogTitle = "Notifications Disabled"
+                    explanationDialogMessage = "Notifications are disabled in your system settings. Please enable notifications for StandBy Mode in Android Settings to use this feature."
+                    showPermissionExplanationDialog = true
+                } else {
+                    onShowChargingNotificationChanged(true)
+                    if (ChargingNotificationManager.isDeviceCharging(context)) {
+                        ChargingNotificationManager.postChargingNotification(context)
+                    }
+                }
+            } else {
+                if (!systemAllowed) {
+                    explanationDialogTitle = "Notifications Disabled"
+                    explanationDialogMessage = "Notifications are disabled in your system settings. Please enable notifications for StandBy Mode in Android Settings to use this feature."
+                    showPermissionExplanationDialog = true
+                } else {
+                    onShowChargingNotificationChanged(true)
+                    if (ChargingNotificationManager.isDeviceCharging(context)) {
+                        ChargingNotificationManager.postChargingNotification(context)
+                    }
+                }
+            }
+        } else {
+            onShowChargingNotificationChanged(false)
+            ChargingNotificationManager.cancelNotification(context)
+        }
+    }
+
+    if (showPermissionExplanationDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionExplanationDialog = false },
+            title = {
+                Text(
+                    text = explanationDialogTitle,
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = explanationDialogMessage,
+                    color = StandByTextMuted,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showPermissionExplanationDialog = false }) {
+                    Text(
+                        text = "OK",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 
     Box(
         modifier = modifier
@@ -122,7 +242,8 @@ fun SettingsScreen(
                                 onShowSecondsChanged = onShowSecondsChanged,
                                 onShowDateChanged = onShowDateChanged,
                                 onAccentColorChanged = onAccentColorChanged,
-                                onNightModeChanged = onNightModeChanged
+                                onNightModeChanged = onNightModeChanged,
+                                onToggleChargingNotification = onToggleChargingNotification
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -154,7 +275,8 @@ fun SettingsScreen(
                             onShowSecondsChanged = onShowSecondsChanged,
                             onShowDateChanged = onShowDateChanged,
                             onAccentColorChanged = onAccentColorChanged,
-                            onNightModeChanged = onNightModeChanged
+                            onNightModeChanged = onNightModeChanged,
+                            onToggleChargingNotification = onToggleChargingNotification
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -222,7 +344,8 @@ private fun SettingsContent(
     onShowSecondsChanged: (Boolean) -> Unit,
     onShowDateChanged: (Boolean) -> Unit,
     onAccentColorChanged: (AccentColorOption) -> Unit,
-    onNightModeChanged: (Boolean) -> Unit
+    onNightModeChanged: (Boolean) -> Unit,
+    onToggleChargingNotification: (Boolean) -> Unit
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -293,6 +416,17 @@ private fun SettingsContent(
             subtitle = "Switch clock display to red on black for low-light environments",
             checked = preferences.isNightModeEnabled,
             onCheckedChange = onNightModeChanged,
+            accentColor = accentColor
+        )
+    }
+
+    // 5. Charging Awareness
+    SettingsSection(title = "Charging Awareness") {
+        SettingsToggleRow(
+            title = "Show notification when charging",
+            subtitle = "Display a notification to open StandBy Mode when power is connected",
+            checked = preferences.showChargingNotification,
+            onCheckedChange = onToggleChargingNotification,
             accentColor = accentColor
         )
     }

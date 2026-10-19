@@ -27,6 +27,7 @@ class PreferencesRepository(private val context: Context) {
         val SHOW_DATE = booleanPreferencesKey("show_date")
         val ACCENT_COLOR = stringPreferencesKey("accent_color")
         val IS_NIGHT_MODE_ENABLED = booleanPreferencesKey("is_night_mode_enabled")
+        val SHOW_CHARGING_NOTIFICATION = booleanPreferencesKey("show_charging_notification")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -44,6 +45,7 @@ class PreferencesRepository(private val context: Context) {
             val showDate = preferences[PreferencesKeys.SHOW_DATE] ?: true
             val accentColorName = preferences[PreferencesKeys.ACCENT_COLOR]
             val isNightModeEnabled = preferences[PreferencesKeys.IS_NIGHT_MODE_ENABLED] ?: false
+            val showChargingNotification = preferences[PreferencesKeys.SHOW_CHARGING_NOTIFICATION] ?: false
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -51,7 +53,8 @@ class PreferencesRepository(private val context: Context) {
                 showSeconds = showSeconds,
                 showDate = showDate,
                 accentColor = AccentColorOption.fromName(accentColorName),
-                isNightModeEnabled = isNightModeEnabled
+                isNightModeEnabled = isNightModeEnabled,
+                showChargingNotification = showChargingNotification
             )
         }
 
@@ -96,6 +99,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateNightMode(isNightModeEnabled: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.IS_NIGHT_MODE_ENABLED] = isNightModeEnabled
+        }
+    }
+
+    suspend fun updateShowChargingNotification(showChargingNotification: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.SHOW_CHARGING_NOTIFICATION] = showChargingNotification
         }
     }
 }

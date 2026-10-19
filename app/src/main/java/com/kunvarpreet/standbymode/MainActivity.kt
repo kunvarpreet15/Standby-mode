@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
@@ -58,6 +59,17 @@ class MainActivity : ComponentActivity() {
                 StandByAppShell(repository = preferencesRepository)
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ChargingNotificationManager.isAppInForeground = true
+        ChargingNotificationManager.cancelNotification(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        ChargingNotificationManager.isAppInForeground = false
     }
 }
 
@@ -115,6 +127,9 @@ fun StandByAppShell(
                 },
                 onNightModeChanged = { isNightMode ->
                     coroutineScope.launch { repository.updateNightMode(isNightMode) }
+                },
+                onShowChargingNotificationChanged = { showChargingNotification ->
+                    coroutineScope.launch { repository.updateShowChargingNotification(showChargingNotification) }
                 },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
