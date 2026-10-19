@@ -24,6 +24,7 @@ class UserClockPreferencesTest {
         assertEquals(false, prefs.showChargingNotification)
         assertEquals(true, prefs.isBurnInProtectionEnabled)
         assertEquals(true, prefs.keepScreenAwake)
+        assertEquals(false, prefs.showBatteryStatus)
     }
 
     @Test
@@ -37,7 +38,8 @@ class UserClockPreferencesTest {
             isNightModeEnabled = true,
             showChargingNotification = true,
             isBurnInProtectionEnabled = false,
-            keepScreenAwake = true
+            keepScreenAwake = true,
+            showBatteryStatus = false
         )
         val toggled = initial.copy(keepScreenAwake = false)
 
@@ -50,6 +52,35 @@ class UserClockPreferencesTest {
         assertEquals(true, toggled.isNightModeEnabled)
         assertEquals(true, toggled.showChargingNotification)
         assertEquals(false, toggled.isBurnInProtectionEnabled)
+        assertEquals(false, toggled.showBatteryStatus)
+    }
+
+    @Test
+    fun showBatteryStatus_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences(
+            clockFace = ClockFaceType.RETRO_FLIP,
+            is24Hour = true,
+            showSeconds = false,
+            showDate = true,
+            accentColor = AccentColorOption.GREEN,
+            isNightModeEnabled = true,
+            showChargingNotification = true,
+            isBurnInProtectionEnabled = true,
+            keepScreenAwake = false,
+            showBatteryStatus = false
+        )
+        val toggled = initial.copy(showBatteryStatus = true)
+
+        assertEquals(true, toggled.showBatteryStatus)
+        assertEquals(ClockFaceType.RETRO_FLIP, toggled.clockFace)
+        assertEquals(true, toggled.is24Hour)
+        assertEquals(false, toggled.showSeconds)
+        assertEquals(true, toggled.showDate)
+        assertEquals(AccentColorOption.GREEN, toggled.accentColor)
+        assertEquals(true, toggled.isNightModeEnabled)
+        assertEquals(true, toggled.showChargingNotification)
+        assertEquals(true, toggled.isBurnInProtectionEnabled)
+        assertEquals(false, toggled.keepScreenAwake)
     }
 
     @Test

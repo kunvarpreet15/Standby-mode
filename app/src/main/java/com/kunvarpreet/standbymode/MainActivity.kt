@@ -12,7 +12,9 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -35,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.kunvarpreet.standbymode.core.battery.BatteryState
+import com.kunvarpreet.standbymode.core.battery.rememberBatteryState
 import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
@@ -44,6 +48,7 @@ import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.rememberLiveTime
 import com.kunvarpreet.standbymode.ui.clock.AnalogClockDialView
+import com.kunvarpreet.standbymode.ui.clock.BatteryStatusPill
 import com.kunvarpreet.standbymode.ui.clock.BoldDigitalClockView
 import com.kunvarpreet.standbymode.ui.clock.DatePill
 import com.kunvarpreet.standbymode.ui.clock.RetroFlipClockView
@@ -172,11 +177,18 @@ fun StandByAppShell(
         is24Hour = preferences.is24Hour
     )
 
+    val batteryState = rememberBatteryState(
+        enabled = preferences.showBatteryStatus,
+        isClockScreen = currentScreen == AppScreen.CLOCK,
+        isActivityForeground = isActivityForeground
+    )
+
     when (currentScreen) {
         AppScreen.CLOCK -> {
             FullscreenClockScreen(
                 preferences = preferences,
                 formattedTime = formattedTime,
+                batteryState = batteryState,
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 modifier = modifier
             )
@@ -215,6 +227,9 @@ fun StandByAppShell(
                 onKeepScreenAwakeChanged = { keepAwake ->
                     coroutineScope.launch { repository.updateKeepScreenAwake(keepAwake) }
                 },
+                onShowBatteryStatusChanged = { showBattery ->
+                    coroutineScope.launch { repository.updateShowBatteryStatus(showBattery) }
+                },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
             )
@@ -224,12 +239,13 @@ fun StandByAppShell(
 
 /**
  * Fullscreen ambient clock screen displaying the active persistent clock face,
- * optional date capsule, and discoverable Settings action button.
+ * optional date capsule, optional battery status indicator, and discoverable Settings action button.
  */
 @Composable
 fun FullscreenClockScreen(
     preferences: UserClockPreferences,
     formattedTime: com.kunvarpreet.standbymode.core.time.FormattedTime,
+    batteryState: BatteryState = BatteryState(),
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -265,21 +281,34 @@ fun FullscreenClockScreen(
             .background(StandByBackground)
             .safeDrawingPadding()
     ) {
-        // Shifted Visual Content Group (Clock face + Date Pill)
+        // Shifted Visual Content Group (Clock face + Date Pill + Battery Status Pill)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .offset(x = animatedX, y = animatedY)
         ) {
-            // Top-Left: Date Capsule (when enabled)
-            if (preferences.showDate && formattedTime.formattedDate.isNotBlank()) {
-                DatePill(
-                    dateText = formattedTime.formattedDate,
-                    isNightMode = preferences.isNightModeEnabled,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 24.dp, top = 16.dp)
-                )
+            // Top-Left: Date Capsule and Battery Status Indicator
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 24.dp, top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (preferences.showDate && formattedTime.formattedDate.isNotBlank()) {
+                    DatePill(
+                        dateText = formattedTime.formattedDate,
+                        isNightMode = preferences.isNightModeEnabled
+                    )
+                }
+
+                if (preferences.showBatteryStatus && batteryState.isAvailable) {
+                    BatteryStatusPill(
+                        batteryState = batteryState,
+                        accentColor = palette.accentColor,
+                        isNightMode = preferences.isNightModeEnabled
+                    )
+                }
             }
 
             // Center: Active Clock Face

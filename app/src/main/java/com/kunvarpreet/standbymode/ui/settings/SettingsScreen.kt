@@ -74,6 +74,7 @@ fun SettingsScreen(
     onShowChargingNotificationChanged: (Boolean) -> Unit,
     onBurnInProtectionChanged: (Boolean) -> Unit = {},
     onKeepScreenAwakeChanged: (Boolean) -> Unit = {},
+    onShowBatteryStatusChanged: (Boolean) -> Unit = {},
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -247,7 +248,8 @@ fun SettingsScreen(
                                 onNightModeChanged = onNightModeChanged,
                                 onToggleChargingNotification = onToggleChargingNotification,
                                 onBurnInProtectionChanged = onBurnInProtectionChanged,
-                                onKeepScreenAwakeChanged = onKeepScreenAwakeChanged
+                                onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
+                                onShowBatteryStatusChanged = onShowBatteryStatusChanged
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -282,7 +284,8 @@ fun SettingsScreen(
                             onNightModeChanged = onNightModeChanged,
                             onToggleChargingNotification = onToggleChargingNotification,
                             onBurnInProtectionChanged = onBurnInProtectionChanged,
-                            onKeepScreenAwakeChanged = onKeepScreenAwakeChanged
+                            onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
+                            onShowBatteryStatusChanged = onShowBatteryStatusChanged
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -353,7 +356,8 @@ private fun SettingsContent(
     onNightModeChanged: (Boolean) -> Unit,
     onToggleChargingNotification: (Boolean) -> Unit,
     onBurnInProtectionChanged: (Boolean) -> Unit,
-    onKeepScreenAwakeChanged: (Boolean) -> Unit
+    onKeepScreenAwakeChanged: (Boolean) -> Unit,
+    onShowBatteryStatusChanged: (Boolean) -> Unit
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -417,7 +421,7 @@ private fun SettingsContent(
         )
     }
 
-    // 4. Display Mode (Night Mode & Burn-In Protection & Keep Screen Awake)
+    // 4. Display Mode (Night Mode & Burn-In Protection & Keep Screen Awake & Battery Status)
     SettingsSection(title = "Display Mode") {
         SettingsToggleRow(
             title = "Night Mode",
@@ -452,6 +456,20 @@ private fun SettingsContent(
             subtitle = "Keeps the display awake while the clock screen is active. This may increase power consumption.",
             checked = preferences.keepScreenAwake,
             onCheckedChange = onKeepScreenAwakeChanged,
+            accentColor = accentColor
+        )
+
+        HorizontalDivider(
+            color = StandByBorder.copy(alpha = 0.5f),
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        SettingsToggleRow(
+            title = "Show battery status",
+            subtitle = "Displays battery percentage and charging state on the clock screen",
+            checked = preferences.showBatteryStatus,
+            onCheckedChange = onShowBatteryStatusChanged,
             accentColor = accentColor
         )
     }

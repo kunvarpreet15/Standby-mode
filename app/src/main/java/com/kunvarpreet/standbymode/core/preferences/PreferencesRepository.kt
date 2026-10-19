@@ -30,6 +30,7 @@ class PreferencesRepository(private val context: Context) {
         val SHOW_CHARGING_NOTIFICATION = booleanPreferencesKey("show_charging_notification")
         val IS_BURN_IN_PROTECTION_ENABLED = booleanPreferencesKey("is_burn_in_protection_enabled")
         val KEEP_SCREEN_AWAKE = booleanPreferencesKey("keep_screen_awake")
+        val SHOW_BATTERY_STATUS = booleanPreferencesKey("show_battery_status")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -50,6 +51,7 @@ class PreferencesRepository(private val context: Context) {
             val showChargingNotification = preferences[PreferencesKeys.SHOW_CHARGING_NOTIFICATION] ?: false
             val isBurnInProtectionEnabled = preferences[PreferencesKeys.IS_BURN_IN_PROTECTION_ENABLED] ?: true
             val keepScreenAwake = preferences[PreferencesKeys.KEEP_SCREEN_AWAKE] ?: true
+            val showBatteryStatus = preferences[PreferencesKeys.SHOW_BATTERY_STATUS] ?: false
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -60,7 +62,8 @@ class PreferencesRepository(private val context: Context) {
                 isNightModeEnabled = isNightModeEnabled,
                 showChargingNotification = showChargingNotification,
                 isBurnInProtectionEnabled = isBurnInProtectionEnabled,
-                keepScreenAwake = keepScreenAwake
+                keepScreenAwake = keepScreenAwake,
+                showBatteryStatus = showBatteryStatus
             )
         }
 
@@ -123,6 +126,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateKeepScreenAwake(keepScreenAwake: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.KEEP_SCREEN_AWAKE] = keepScreenAwake
+        }
+    }
+
+    suspend fun updateShowBatteryStatus(showBatteryStatus: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.SHOW_BATTERY_STATUS] = showBatteryStatus
         }
     }
 }
