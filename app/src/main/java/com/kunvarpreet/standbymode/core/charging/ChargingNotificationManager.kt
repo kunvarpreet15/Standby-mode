@@ -48,25 +48,39 @@ object ChargingNotificationPolicy {
  */
 object ChargingNotificationManager {
 
-    const val CHANNEL_ID = "charging_notifications"
+    const val CHANNEL_ID = "charging_notifications_quiet"
+    const val LEGACY_CHANNEL_ID = "charging_notifications"
     const val NOTIFICATION_ID = 1001
 
     @Volatile
     var isAppInForeground: Boolean = false
 
     /**
-     * Creates the dedicated notification channel for charging awareness.
+     * Creates the dedicated non-disruptive notification channel for charging awareness.
      * Safe to call multiple times.
+     *
+     * Android does not allow changing the importance of an existing channel programmatically.
+     * To migrate existing installations cleanly from the previous IMPORTANCE_DEFAULT channel,
+     * we delete LEGACY_CHANNEL_ID and create CHANNEL_ID configured with IMPORTANCE_LOW.
      */
     fun ensureNotificationChannel(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             ?: return
 
+        try {
+            val legacyChannel = manager.getNotificationChannel(LEGACY_CHANNEL_ID)
+            if (legacyChannel != null) {
+                manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+            }
+        } catch (_: Exception) {
+            // Non-critical cleanup
+        }
+
         val existingChannel = manager.getNotificationChannel(CHANNEL_ID)
         if (existingChannel == null) {
             val name = "Charging Notifications"
-            val descriptionText = "Notifications to open StandBy Mode when device is connected to power"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val descriptionText = "Non-disruptive notifications to open StandBy Mode when device is connected to power"
+            val importance = NotificationManager.IMPORTANCE_LOW
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
                 setShowBadge(false)

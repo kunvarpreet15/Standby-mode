@@ -54,7 +54,8 @@ object TimeFormatter {
             minutes = minutesString,
             seconds = secondsString,
             amPm = amPmString,
-            formattedDate = formattedDate
+            formattedDate = formattedDate,
+            timestamp = instant
         )
     }
 }

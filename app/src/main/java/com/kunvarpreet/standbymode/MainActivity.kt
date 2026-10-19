@@ -5,15 +5,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -21,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
@@ -131,6 +137,9 @@ fun StandByAppShell(
                 onShowChargingNotificationChanged = { showChargingNotification ->
                     coroutineScope.launch { repository.updateShowChargingNotification(showChargingNotification) }
                 },
+                onBurnInProtectionChanged = { isBurnInProtectionEnabled ->
+                    coroutineScope.launch { repository.updateBurnInProtection(isBurnInProtectionEnabled) }
+                },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
             )
@@ -154,24 +163,95 @@ fun FullscreenClockScreen(
         selectedAccent = preferences.accentColor
     )
 
+    // Determine target pixel shift offset based on current 5-minute interval and protection preference
+    val bucketIndex = formattedTime.timestamp.epochSecond / (BurnInProtectionPolicy.INTERVAL_MINUTES * 60L)
+    val targetOffset = remember(bucketIndex, preferences.isBurnInProtectionEnabled) {
+        BurnInProtectionPolicy.calculateOffset(
+            instant = formattedTime.timestamp,
+            isEnabled = preferences.isBurnInProtectionEnabled
+        )
+    }
+
+    // Gentle 400ms transition between nearby offsets
+    val animatedX by animateDpAsState(
+        targetValue = targetOffset.xDp.dp,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "burn_in_pixel_shift_x"
+    )
+    val animatedY by animateDpAsState(
+        targetValue = targetOffset.yDp.dp,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "burn_in_pixel_shift_y"
+    )
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(StandByBackground)
             .safeDrawingPadding()
     ) {
-        // Top-Left: Date Capsule (when enabled)
-        if (preferences.showDate && formattedTime.formattedDate.isNotBlank()) {
-            DatePill(
-                dateText = formattedTime.formattedDate,
-                isNightMode = preferences.isNightModeEnabled,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 24.dp, top = 16.dp)
-            )
+        // Shifted Visual Content Group (Clock face + Date Pill)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(x = animatedX, y = animatedY)
+        ) {
+            // Top-Left: Date Capsule (when enabled)
+            if (preferences.showDate && formattedTime.formattedDate.isNotBlank()) {
+                DatePill(
+                    dateText = formattedTime.formattedDate,
+                    isNightMode = preferences.isNightModeEnabled,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 24.dp, top = 16.dp)
+                )
+            }
+
+            // Center: Active Clock Face
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                when (preferences.clockFace) {
+                    ClockFaceType.BOLD_DIGITAL -> {
+                        BoldDigitalClockView(
+                            hours = formattedTime.hours,
+                            minutes = formattedTime.minutes,
+                            seconds = if (preferences.showSeconds) formattedTime.seconds else null,
+                            amPm = formattedTime.amPm,
+                            accentColor = palette.accentColor,
+                            isNightMode = preferences.isNightModeEnabled,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    ClockFaceType.ANALOG -> {
+                        val hourInt = formattedTime.hours.toIntOrNull() ?: 0
+                        val minInt = formattedTime.minutes.toIntOrNull() ?: 0
+                        val secInt = formattedTime.seconds?.toIntOrNull()
+
+                        AnalogClockDialView(
+                            hours = hourInt,
+                            minutes = minInt,
+                            seconds = secInt,
+                            showSeconds = preferences.showSeconds,
+                            accentColor = palette.accentColor,
+                            isNightMode = preferences.isNightModeEnabled,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    ClockFaceType.RETRO_FLIP -> {
+                        RetroFlipClockView(
+                            hours = formattedTime.hours,
+                            minutes = formattedTime.minutes,
+                            isNightMode = preferences.isNightModeEnabled,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
         }
 
-        // Top-Right: Discoverable Settings Button
+        // Top-Right: Discoverable Settings Button (Stationary)
         SettingsButton(
             onClick = onOpenSettings,
             isNightMode = preferences.isNightModeEnabled,
@@ -179,49 +259,6 @@ fun FullscreenClockScreen(
                 .align(Alignment.TopEnd)
                 .padding(end = 16.dp, top = 8.dp)
         )
-
-        // Center: Active Clock Face
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            when (preferences.clockFace) {
-                ClockFaceType.BOLD_DIGITAL -> {
-                    BoldDigitalClockView(
-                        hours = formattedTime.hours,
-                        minutes = formattedTime.minutes,
-                        seconds = if (preferences.showSeconds) formattedTime.seconds else null,
-                        amPm = formattedTime.amPm,
-                        accentColor = palette.accentColor,
-                        isNightMode = preferences.isNightModeEnabled,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                ClockFaceType.ANALOG -> {
-                    val hourInt = formattedTime.hours.toIntOrNull() ?: 0
-                    val minInt = formattedTime.minutes.toIntOrNull() ?: 0
-                    val secInt = formattedTime.seconds?.toIntOrNull()
-
-                    AnalogClockDialView(
-                        hours = hourInt,
-                        minutes = minInt,
-                        seconds = secInt,
-                        showSeconds = preferences.showSeconds,
-                        accentColor = palette.accentColor,
-                        isNightMode = preferences.isNightModeEnabled,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                ClockFaceType.RETRO_FLIP -> {
-                    RetroFlipClockView(
-                        hours = formattedTime.hours,
-                        minutes = formattedTime.minutes,
-                        isNightMode = preferences.isNightModeEnabled,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-        }
     }
 }
 

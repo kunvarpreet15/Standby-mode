@@ -85,6 +85,7 @@ class ChargingNotificationLogicTest {
     fun notificationConstants_preventDuplicateNotifications() {
         // Notification ID is fixed to ensure successive charging events update/replace rather than stack
         assertEquals(1001, ChargingNotificationManager.NOTIFICATION_ID)
-        assertEquals("charging_notifications", ChargingNotificationManager.CHANNEL_ID)
+        assertEquals("charging_notifications_quiet", ChargingNotificationManager.CHANNEL_ID)
+        assertEquals("charging_notifications", ChargingNotificationManager.LEGACY_CHANNEL_ID)
     }
 }

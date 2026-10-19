@@ -28,6 +28,7 @@ class PreferencesRepository(private val context: Context) {
         val ACCENT_COLOR = stringPreferencesKey("accent_color")
         val IS_NIGHT_MODE_ENABLED = booleanPreferencesKey("is_night_mode_enabled")
         val SHOW_CHARGING_NOTIFICATION = booleanPreferencesKey("show_charging_notification")
+        val IS_BURN_IN_PROTECTION_ENABLED = booleanPreferencesKey("is_burn_in_protection_enabled")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -46,6 +47,7 @@ class PreferencesRepository(private val context: Context) {
             val accentColorName = preferences[PreferencesKeys.ACCENT_COLOR]
             val isNightModeEnabled = preferences[PreferencesKeys.IS_NIGHT_MODE_ENABLED] ?: false
             val showChargingNotification = preferences[PreferencesKeys.SHOW_CHARGING_NOTIFICATION] ?: false
+            val isBurnInProtectionEnabled = preferences[PreferencesKeys.IS_BURN_IN_PROTECTION_ENABLED] ?: true
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -54,7 +56,8 @@ class PreferencesRepository(private val context: Context) {
                 showDate = showDate,
                 accentColor = AccentColorOption.fromName(accentColorName),
                 isNightModeEnabled = isNightModeEnabled,
-                showChargingNotification = showChargingNotification
+                showChargingNotification = showChargingNotification,
+                isBurnInProtectionEnabled = isBurnInProtectionEnabled
             )
         }
 
@@ -105,6 +108,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateShowChargingNotification(showChargingNotification: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.SHOW_CHARGING_NOTIFICATION] = showChargingNotification
+        }
+    }
+
+    suspend fun updateBurnInProtection(isBurnInProtectionEnabled: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.IS_BURN_IN_PROTECTION_ENABLED] = isBurnInProtectionEnabled
         }
     }
 }
