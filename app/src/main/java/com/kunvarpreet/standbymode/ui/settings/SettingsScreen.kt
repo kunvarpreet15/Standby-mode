@@ -73,6 +73,7 @@ fun SettingsScreen(
     onNightModeChanged: (Boolean) -> Unit,
     onShowChargingNotificationChanged: (Boolean) -> Unit,
     onBurnInProtectionChanged: (Boolean) -> Unit = {},
+    onKeepScreenAwakeChanged: (Boolean) -> Unit = {},
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -245,7 +246,8 @@ fun SettingsScreen(
                                 onAccentColorChanged = onAccentColorChanged,
                                 onNightModeChanged = onNightModeChanged,
                                 onToggleChargingNotification = onToggleChargingNotification,
-                                onBurnInProtectionChanged = onBurnInProtectionChanged
+                                onBurnInProtectionChanged = onBurnInProtectionChanged,
+                                onKeepScreenAwakeChanged = onKeepScreenAwakeChanged
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -279,7 +281,8 @@ fun SettingsScreen(
                             onAccentColorChanged = onAccentColorChanged,
                             onNightModeChanged = onNightModeChanged,
                             onToggleChargingNotification = onToggleChargingNotification,
-                            onBurnInProtectionChanged = onBurnInProtectionChanged
+                            onBurnInProtectionChanged = onBurnInProtectionChanged,
+                            onKeepScreenAwakeChanged = onKeepScreenAwakeChanged
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -349,7 +352,8 @@ private fun SettingsContent(
     onAccentColorChanged: (AccentColorOption) -> Unit,
     onNightModeChanged: (Boolean) -> Unit,
     onToggleChargingNotification: (Boolean) -> Unit,
-    onBurnInProtectionChanged: (Boolean) -> Unit
+    onBurnInProtectionChanged: (Boolean) -> Unit,
+    onKeepScreenAwakeChanged: (Boolean) -> Unit
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -413,7 +417,7 @@ private fun SettingsContent(
         )
     }
 
-    // 4. Display Mode (Night Mode & Burn-In Protection)
+    // 4. Display Mode (Night Mode & Burn-In Protection & Keep Screen Awake)
     SettingsSection(title = "Display Mode") {
         SettingsToggleRow(
             title = "Night Mode",
@@ -434,6 +438,20 @@ private fun SettingsContent(
             subtitle = "Slightly shifts clock position at regular intervals to reduce localized display wear",
             checked = preferences.isBurnInProtectionEnabled,
             onCheckedChange = onBurnInProtectionChanged,
+            accentColor = accentColor
+        )
+
+        HorizontalDivider(
+            color = StandByBorder.copy(alpha = 0.5f),
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        SettingsToggleRow(
+            title = "Keep screen awake",
+            subtitle = "Keeps the display awake while the clock screen is active. This may increase power consumption.",
+            checked = preferences.keepScreenAwake,
+            onCheckedChange = onKeepScreenAwakeChanged,
             accentColor = accentColor
         )
     }

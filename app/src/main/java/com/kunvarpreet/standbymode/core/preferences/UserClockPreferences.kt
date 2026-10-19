@@ -98,5 +98,6 @@ data class UserClockPreferences(
     val accentColor: AccentColorOption = AccentColorOption.ORANGE,
     val isNightModeEnabled: Boolean = false,
     val showChargingNotification: Boolean = false,
-    val isBurnInProtectionEnabled: Boolean = true
+    val isBurnInProtectionEnabled: Boolean = true,
+    val keepScreenAwake: Boolean = true
 )

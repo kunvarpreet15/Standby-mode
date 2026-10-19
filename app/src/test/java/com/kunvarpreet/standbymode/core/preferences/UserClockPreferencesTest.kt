@@ -23,6 +23,33 @@ class UserClockPreferencesTest {
         assertEquals(false, prefs.isNightModeEnabled)
         assertEquals(false, prefs.showChargingNotification)
         assertEquals(true, prefs.isBurnInProtectionEnabled)
+        assertEquals(true, prefs.keepScreenAwake)
+    }
+
+    @Test
+    fun keepScreenAwake_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences(
+            clockFace = ClockFaceType.ANALOG,
+            is24Hour = true,
+            showSeconds = true,
+            showDate = false,
+            accentColor = AccentColorOption.PURPLE,
+            isNightModeEnabled = true,
+            showChargingNotification = true,
+            isBurnInProtectionEnabled = false,
+            keepScreenAwake = true
+        )
+        val toggled = initial.copy(keepScreenAwake = false)
+
+        assertEquals(false, toggled.keepScreenAwake)
+        assertEquals(ClockFaceType.ANALOG, toggled.clockFace)
+        assertEquals(true, toggled.is24Hour)
+        assertEquals(true, toggled.showSeconds)
+        assertEquals(false, toggled.showDate)
+        assertEquals(AccentColorOption.PURPLE, toggled.accentColor)
+        assertEquals(true, toggled.isNightModeEnabled)
+        assertEquals(true, toggled.showChargingNotification)
+        assertEquals(false, toggled.isBurnInProtectionEnabled)
     }
 
     @Test

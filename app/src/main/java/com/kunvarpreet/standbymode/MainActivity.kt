@@ -1,6 +1,9 @@
 package com.kunvarpreet.standbymode
 
+import android.app.Activity
+import android.content.ContextWrapper
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -15,6 +18,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,10 +29,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
+import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
@@ -76,6 +86,12 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         ChargingNotificationManager.isAppInForeground = false
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 }
 
@@ -93,6 +109,62 @@ fun StandByAppShell(
     )
 
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.CLOCK) }
+
+    val context = LocalContext.current
+    val window = remember(context) {
+        generateSequence(context) { (it as? ContextWrapper)?.baseContext }
+            .filterIsInstance<Activity>()
+            .firstOrNull()?.window
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isActivityForeground by remember {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    isActivityForeground = true
+                }
+                Lifecycle.Event.ON_PAUSE,
+                Lifecycle.Event.ON_STOP,
+                Lifecycle.Event.ON_DESTROY -> {
+                    isActivityForeground = false
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val shouldKeepScreenOn = remember(preferences.keepScreenAwake, currentScreen, isActivityForeground) {
+        KeepScreenAwakePolicy.shouldKeepScreenOn(
+            isPreferenceEnabled = preferences.keepScreenAwake,
+            currentScreen = currentScreen,
+            isActivityForeground = isActivityForeground
+        )
+    }
+
+    LaunchedEffect(shouldKeepScreenOn, window) {
+        if (window != null) {
+            if (shouldKeepScreenOn) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
+
+    DisposableEffect(window) {
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     // Live time engine is shared across screens without duplicating tickers
     val formattedTime by rememberLiveTime(
@@ -139,6 +211,9 @@ fun StandByAppShell(
                 },
                 onBurnInProtectionChanged = { isBurnInProtectionEnabled ->
                     coroutineScope.launch { repository.updateBurnInProtection(isBurnInProtectionEnabled) }
+                },
+                onKeepScreenAwakeChanged = { keepAwake ->
+                    coroutineScope.launch { repository.updateKeepScreenAwake(keepAwake) }
                 },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
