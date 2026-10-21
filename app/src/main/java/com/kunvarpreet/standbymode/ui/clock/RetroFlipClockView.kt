@@ -33,9 +33,9 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
  */
 @Composable
 fun RetroFlipClockView(
+    modifier: Modifier = Modifier,
     hours: String,
     minutes: String,
-    modifier: Modifier = Modifier,
     cardColor: Color = StandBySurfaceCard,
     textColor: Color = StandByTextPrimary,
     isNightMode: Boolean = false

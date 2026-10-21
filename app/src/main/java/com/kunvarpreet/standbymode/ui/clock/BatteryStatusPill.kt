@@ -37,8 +37,8 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
  */
 @Composable
 fun BatteryStatusPill(
-    batteryState: BatteryState,
     modifier: Modifier = Modifier,
+    batteryState: BatteryState,
     accentColor: Color = Color.Unspecified,
     isNightMode: Boolean = false
 ) {
@@ -58,14 +58,12 @@ fun BatteryStatusPill(
         append(batteryState.percentage)
         append(" percent")
         if (batteryState.isCharging) {
-            append(", charging")
-        }
-    }
+            append(", charging") } }
 
     Surface(
         shape = RoundedCornerShape(50),
         color = surfaceColor,
-        border = BorderStroke(1.dp, borderColor),
+        border = BorderStroke(2.dp, borderColor),
         modifier = modifier.semantics {
             contentDescription = accessibilityDescription
         }

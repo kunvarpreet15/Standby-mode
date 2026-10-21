@@ -23,8 +23,8 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
  */
 @Composable
 fun DatePill(
-    dateText: String,
     modifier: Modifier = Modifier,
+    dateText: String,
     isNightMode: Boolean = false
 ) {
     if (dateText.isBlank()) return
@@ -36,7 +36,7 @@ fun DatePill(
     Surface(
         shape = RoundedCornerShape(50),
         color = surfaceColor,
-        border = BorderStroke(1.dp, borderColor),
+        border = BorderStroke(2.dp, borderColor),
         modifier = modifier
     ) {
         Text(

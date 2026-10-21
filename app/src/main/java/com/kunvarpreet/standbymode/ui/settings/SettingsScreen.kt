@@ -63,6 +63,7 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
  */
 @Composable
 fun SettingsScreen(
+    modifier: Modifier = Modifier,
     preferences: UserClockPreferences,
     formattedTime: FormattedTime,
     onClockFaceChanged: (ClockFaceType) -> Unit,
@@ -75,8 +76,7 @@ fun SettingsScreen(
     onBurnInProtectionChanged: (Boolean) -> Unit = {},
     onKeepScreenAwakeChanged: (Boolean) -> Unit = {},
     onShowBatteryStatusChanged: (Boolean) -> Unit = {},
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val accentColor = preferences.accentColor.color

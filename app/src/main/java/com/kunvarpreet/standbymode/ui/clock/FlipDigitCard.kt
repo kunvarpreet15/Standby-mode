@@ -53,12 +53,12 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
  */
 @Composable
 fun FlipDigitCard(
+    modifier: Modifier = Modifier,
     digit: Char,
     cardWidth: Dp,
     cardHeight: Dp,
     fontSize: TextUnit,
     cornerRadius: Dp,
-    modifier: Modifier = Modifier,
     cardColor: Color = StandBySurfaceCard,
     textColor: Color = StandByTextPrimary,
     isNightMode: Boolean = false

@@ -33,7 +33,7 @@ object ChargingNotificationPolicy {
     }
 
     /**
-     * Determines whether an active charging notification should be cancelled.
+     * Determines whether an active charging notification should be canceled.
      */
     fun shouldCancelChargingNotification(
         isFeatureEnabled: Boolean,
