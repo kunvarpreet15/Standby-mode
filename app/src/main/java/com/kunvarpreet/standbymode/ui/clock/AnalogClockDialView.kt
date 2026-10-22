@@ -32,12 +32,12 @@ import kotlin.math.sin
  */
 @Composable
 fun AnalogClockDialView(
+    modifier: Modifier = Modifier,
     hourAngle: Float,
     minuteAngle: Float,
     secondAngle: Float? = null,
     accentColor: Color = StandByAccentOrange,
-    isNightMode: Boolean = false,
-    modifier: Modifier = Modifier
+    isNightMode: Boolean = false
 ) {
     val rimColor = if (isNightMode) StandByNightSurface else StandByBorder
     val majorTickColor = if (isNightMode) StandByNightText else StandByTextPrimary

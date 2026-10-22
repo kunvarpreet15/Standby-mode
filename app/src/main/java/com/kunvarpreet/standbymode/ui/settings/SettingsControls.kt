@@ -48,8 +48,8 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
  */
 @Composable
 fun SettingsSection(
-    title: String,
     modifier: Modifier = Modifier,
+    title: String,
     content: @Composable () -> Unit
 ) {
     Column(modifier = modifier.fillMaxWidth()) {

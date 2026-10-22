@@ -18,8 +18,8 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
  */
 @Composable
 fun SettingsButton(
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit,
     isNightMode: Boolean = false
 ) {
     val tint = if (isNightMode) StandByNightTextMuted else StandByTextMuted

@@ -84,6 +84,63 @@ class UserClockPreferencesTest {
     }
 
     @Test
+    fun burnInProtection_toggling_preservesClockSettingsAndOtherPreferences() {
+        val initial = UserClockPreferences(
+            clockFace = ClockFaceType.ANALOG,
+            is24Hour = true,
+            showSeconds = true,
+            showDate = false,
+            accentColor = AccentColorOption.PURPLE,
+            isNightModeEnabled = false,
+            showChargingNotification = true,
+            isBurnInProtectionEnabled = true,
+            keepScreenAwake = false,
+            showBatteryStatus = true
+        )
+        val toggled = initial.copy(isBurnInProtectionEnabled = false)
+
+        assertEquals(false, toggled.isBurnInProtectionEnabled)
+        assertEquals(ClockFaceType.ANALOG, toggled.clockFace)
+        assertEquals(true, toggled.is24Hour)
+        assertEquals(true, toggled.showSeconds)
+        assertEquals(false, toggled.showDate)
+        assertEquals(AccentColorOption.PURPLE, toggled.accentColor)
+        assertEquals(false, toggled.isNightModeEnabled)
+        assertEquals(true, toggled.showChargingNotification)
+        assertEquals(false, toggled.keepScreenAwake)
+        assertEquals(true, toggled.showBatteryStatus)
+    }
+
+    @Test
+    fun batteryIndicatorAndChargingNotifications_remainCompletelyIndependent() {
+        val initial = UserClockPreferences(
+            showChargingNotification = false,
+            showBatteryStatus = false
+        )
+
+        // Enabling battery indicator does not enable charging notification
+        val batteryEnabled = initial.copy(showBatteryStatus = true)
+        assertEquals(true, batteryEnabled.showBatteryStatus)
+        assertEquals(false, batteryEnabled.showChargingNotification)
+
+        // Enabling charging notification does not enable battery indicator
+        val chargingEnabled = initial.copy(showChargingNotification = true)
+        assertEquals(true, chargingEnabled.showChargingNotification)
+        assertEquals(false, chargingEnabled.showBatteryStatus)
+    }
+
+    @Test
+    fun keepScreenAwake_doesNotImplicitlyEnableChargingNotifications() {
+        val initial = UserClockPreferences(
+            keepScreenAwake = false,
+            showChargingNotification = false
+        )
+        val toggled = initial.copy(keepScreenAwake = true)
+        assertEquals(true, toggled.keepScreenAwake)
+        assertEquals(false, toggled.showChargingNotification)
+    }
+
+    @Test
     fun clockFaceType_fromName_handles_valid_and_invalid_values() {
         assertEquals(ClockFaceType.BOLD_DIGITAL, ClockFaceType.fromName("BOLD_DIGITAL"))
         assertEquals(ClockFaceType.ANALOG, ClockFaceType.fromName("ANALOG"))
