@@ -76,7 +76,7 @@ fun BatteryStatusPill(
             if (batteryState.isCharging) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_charging_bolt),
-                    contentDescription = null, // Described by parent semantics
+                    contentDescription = null,
                     tint = iconColor,
                     modifier = Modifier.size(12.dp)
                 )

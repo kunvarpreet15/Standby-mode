@@ -2,9 +2,13 @@ package com.kunvarpreet.standbymode.ui.settings
 
 import android.Manifest
 import android.app.NotificationManager
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -33,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,7 +50,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
+import com.kunvarpreet.standbymode.core.media.MediaNotificationListenerService
+import com.kunvarpreet.standbymode.core.media.MediaSessionPolicy
 import com.kunvarpreet.standbymode.core.preferences.AccentColorOption
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
@@ -76,6 +86,7 @@ fun SettingsScreen(
     onBurnInProtectionChanged: (Boolean) -> Unit = {},
     onKeepScreenAwakeChanged: (Boolean) -> Unit = {},
     onShowBatteryStatusChanged: (Boolean) -> Unit = {},
+    onShowMediaPlayerChanged: (Boolean) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -148,6 +159,47 @@ fun SettingsScreen(
         }
     }
 
+    var showMediaPermissionExplanationDialog by remember { mutableStateOf(false) }
+    var waitingForMediaPermissionReturn by remember { mutableStateOf(false) }
+    var showMediaPermissionDeniedFeedback by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (waitingForMediaPermissionReturn) {
+                    waitingForMediaPermissionReturn = false
+                    if (MediaSessionPolicy.isNotificationListenerGranted(context)) {
+                        onShowMediaPlayerChanged(true)
+                    } else {
+                        onShowMediaPlayerChanged(false)
+                        showMediaPermissionDeniedFeedback = true
+                    }
+                } else if (preferences.showMediaPlayer) {
+                    if (!MediaSessionPolicy.isNotificationListenerGranted(context)) {
+                        onShowMediaPlayerChanged(false)
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val onToggleMediaPlayer: (Boolean) -> Unit = { shouldEnable ->
+        if (shouldEnable) {
+            if (MediaSessionPolicy.isNotificationListenerGranted(context)) {
+                onShowMediaPlayerChanged(true)
+            } else {
+                showMediaPermissionExplanationDialog = true
+            }
+        } else {
+            onShowMediaPlayerChanged(false)
+        }
+    }
+
     if (showPermissionExplanationDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionExplanationDialog = false },
@@ -168,6 +220,101 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showPermissionExplanationDialog = false }) {
+                    Text(
+                        text = "OK",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (showMediaPermissionExplanationDialog) {
+        AlertDialog(
+            onDismissRequest = { showMediaPermissionExplanationDialog = false },
+            title = {
+                Text(
+                    text = "Media Access Required",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "StandBy Mode displays track information and playback controls from compatible media apps on your bedside clock.\n\nTo discover active playback, Android requires Notification Listener access. This is a sensitive permission that must be granted in system Settings.\n\nPrivacy Notice: StandBy Mode uses this access strictly to read media session playback controls and metadata (track title, artist, album artwork). StandBy Mode does not inspect, read, or store any messages, notifications, or personal data.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showMediaPermissionExplanationDialog = false
+                        waitingForMediaPermissionReturn = true
+                        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+                            putExtra(
+                                ":settings:fragment_args_key",
+                                ComponentName(context, MediaNotificationListenerService::class.java).flattenToString()
+                            )
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: ActivityNotFoundException) {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_SETTINGS))
+                            } catch (_: Exception) {}
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Open Settings",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMediaPermissionExplanationDialog = false }) {
+                    Text(
+                        text = "Cancel",
+                        color = StandByTextMuted,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (showMediaPermissionDeniedFeedback) {
+        AlertDialog(
+            onDismissRequest = { showMediaPermissionDeniedFeedback = false },
+            title = {
+                Text(
+                    text = "Media Access Not Granted",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "Notification Listener access was not granted. The media player remains disabled until access is granted in Android Settings.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showMediaPermissionDeniedFeedback = false }) {
                     Text(
                         text = "OK",
                         color = accentColor,
@@ -249,7 +396,8 @@ fun SettingsScreen(
                                 onToggleChargingNotification = onToggleChargingNotification,
                                 onBurnInProtectionChanged = onBurnInProtectionChanged,
                                 onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
-                                onShowBatteryStatusChanged = onShowBatteryStatusChanged
+                                onShowBatteryStatusChanged = onShowBatteryStatusChanged,
+                                onToggleMediaPlayer = onToggleMediaPlayer
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -285,7 +433,8 @@ fun SettingsScreen(
                             onToggleChargingNotification = onToggleChargingNotification,
                             onBurnInProtectionChanged = onBurnInProtectionChanged,
                             onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
-                            onShowBatteryStatusChanged = onShowBatteryStatusChanged
+                            onShowBatteryStatusChanged = onShowBatteryStatusChanged,
+                            onToggleMediaPlayer = onToggleMediaPlayer
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -357,7 +506,8 @@ private fun SettingsContent(
     onToggleChargingNotification: (Boolean) -> Unit,
     onBurnInProtectionChanged: (Boolean) -> Unit,
     onKeepScreenAwakeChanged: (Boolean) -> Unit,
-    onShowBatteryStatusChanged: (Boolean) -> Unit
+    onShowBatteryStatusChanged: (Boolean) -> Unit,
+    onToggleMediaPlayer: (Boolean) -> Unit
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -474,7 +624,18 @@ private fun SettingsContent(
         )
     }
 
-    // 5. Charging Awareness
+    // 5. Media Controls
+    SettingsSection(title = "Media Controls") {
+        SettingsToggleRow(
+            title = "Show media player",
+            subtitle = "Display track information and playback controls from compatible media apps",
+            checked = preferences.showMediaPlayer,
+            onCheckedChange = onToggleMediaPlayer,
+            accentColor = accentColor
+        )
+    }
+
+    // 6. Charging Awareness
     SettingsSection(title = "Charging Awareness") {
         SettingsToggleRow(
             title = "Show notification when charging",

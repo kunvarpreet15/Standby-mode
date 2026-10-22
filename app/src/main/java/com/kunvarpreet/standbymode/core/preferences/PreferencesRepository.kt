@@ -31,6 +31,7 @@ class PreferencesRepository(private val context: Context) {
         val IS_BURN_IN_PROTECTION_ENABLED = booleanPreferencesKey("is_burn_in_protection_enabled")
         val KEEP_SCREEN_AWAKE = booleanPreferencesKey("keep_screen_awake")
         val SHOW_BATTERY_STATUS = booleanPreferencesKey("show_battery_status")
+        val SHOW_MEDIA_PLAYER = booleanPreferencesKey("show_media_player")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -52,6 +53,7 @@ class PreferencesRepository(private val context: Context) {
             val isBurnInProtectionEnabled = preferences[PreferencesKeys.IS_BURN_IN_PROTECTION_ENABLED] ?: true
             val keepScreenAwake = preferences[PreferencesKeys.KEEP_SCREEN_AWAKE] ?: true
             val showBatteryStatus = preferences[PreferencesKeys.SHOW_BATTERY_STATUS] ?: false
+            val showMediaPlayer = preferences[PreferencesKeys.SHOW_MEDIA_PLAYER] ?: false
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -63,7 +65,8 @@ class PreferencesRepository(private val context: Context) {
                 showChargingNotification = showChargingNotification,
                 isBurnInProtectionEnabled = isBurnInProtectionEnabled,
                 keepScreenAwake = keepScreenAwake,
-                showBatteryStatus = showBatteryStatus
+                showBatteryStatus = showBatteryStatus,
+                showMediaPlayer = showMediaPlayer
             )
         }
 
@@ -132,6 +135,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateShowBatteryStatus(showBatteryStatus: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.SHOW_BATTERY_STATUS] = showBatteryStatus
+        }
+    }
+
+    suspend fun updateShowMediaPlayer(showMediaPlayer: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.SHOW_MEDIA_PLAYER] = showMediaPlayer
         }
     }
 }

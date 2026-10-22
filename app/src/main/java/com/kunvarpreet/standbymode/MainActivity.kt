@@ -1,8 +1,11 @@
 package com.kunvarpreet.standbymode
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.ContextWrapper
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -42,6 +45,9 @@ import com.kunvarpreet.standbymode.core.battery.rememberBatteryState
 import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
+import com.kunvarpreet.standbymode.core.media.MediaNotificationListenerService
+import com.kunvarpreet.standbymode.core.media.MediaSessionRepository
+import com.kunvarpreet.standbymode.core.media.MediaWidgetUiState
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
@@ -52,6 +58,7 @@ import com.kunvarpreet.standbymode.ui.clock.BatteryStatusPill
 import com.kunvarpreet.standbymode.ui.clock.BoldDigitalClockView
 import com.kunvarpreet.standbymode.ui.clock.DatePill
 import com.kunvarpreet.standbymode.ui.clock.RetroFlipClockView
+import com.kunvarpreet.standbymode.ui.media.MediaMiniWidget
 import com.kunvarpreet.standbymode.ui.settings.SettingsButton
 import com.kunvarpreet.standbymode.ui.settings.SettingsScreen
 import com.kunvarpreet.standbymode.ui.theme.StandByBackground
@@ -122,6 +129,10 @@ fun StandByAppShell(
             .firstOrNull()?.window
     }
 
+    val mediaSessionRepository = remember(context) {
+        MediaSessionRepository(context.applicationContext)
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     var isActivityForeground by remember {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
@@ -132,6 +143,7 @@ fun StandByAppShell(
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     isActivityForeground = true
+                    mediaSessionRepository.refreshAccess()
                 }
                 Lifecycle.Event.ON_PAUSE,
                 Lifecycle.Event.ON_STOP,
@@ -183,12 +195,52 @@ fun StandByAppShell(
         isActivityForeground = isActivityForeground
     )
 
+    val shouldObserveMedia = preferences.showMediaPlayer &&
+            currentScreen == AppScreen.CLOCK &&
+            isActivityForeground
+
+    DisposableEffect(shouldObserveMedia, mediaSessionRepository) {
+        if (shouldObserveMedia) {
+            mediaSessionRepository.startObserving()
+        } else {
+            mediaSessionRepository.stopObserving()
+        }
+        onDispose {
+            mediaSessionRepository.stopObserving()
+        }
+    }
+
+    val mediaWidgetUiState by mediaSessionRepository.uiStateFlow.collectAsState()
+
+    val openMediaSettings = remember(context) {
+        {
+            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+                putExtra(
+                    ":settings:fragment_args_key",
+                    ComponentName(context, MediaNotificationListenerService::class.java).flattenToString()
+                )
+            }
+            try {
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                try {
+                    context.startActivity(Intent(Settings.ACTION_SETTINGS))
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     when (currentScreen) {
         AppScreen.CLOCK -> {
             FullscreenClockScreen(
                 preferences = preferences,
                 formattedTime = formattedTime,
                 batteryState = batteryState,
+                mediaWidgetUiState = mediaWidgetUiState,
+                onMediaPlayPause = { mediaSessionRepository.playPause() },
+                onMediaPrevious = { mediaSessionRepository.skipToPrevious() },
+                onMediaNext = { mediaSessionRepository.skipToNext() },
+                onOpenMediaPermissionSettings = openMediaSettings,
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 modifier = modifier
             )
@@ -230,6 +282,9 @@ fun StandByAppShell(
                 onShowBatteryStatusChanged = { showBattery ->
                     coroutineScope.launch { repository.updateShowBatteryStatus(showBattery) }
                 },
+                onShowMediaPlayerChanged = { showMedia ->
+                    coroutineScope.launch { repository.updateShowMediaPlayer(showMedia) }
+                },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
             )
@@ -246,6 +301,11 @@ fun FullscreenClockScreen(
     preferences: UserClockPreferences,
     formattedTime: com.kunvarpreet.standbymode.core.time.FormattedTime,
     batteryState: BatteryState = BatteryState(),
+    mediaWidgetUiState: MediaWidgetUiState = MediaWidgetUiState.NoActiveMedia,
+    onMediaPlayPause: () -> Unit = {},
+    onMediaPrevious: () -> Unit = {},
+    onMediaNext: () -> Unit = {},
+    onOpenMediaPermissionSettings: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -313,7 +373,9 @@ fun FullscreenClockScreen(
 
             // Center: Active Clock Face
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = if (preferences.showMediaPlayer) 64.dp else 0.dp),
                 contentAlignment = Alignment.Center
             ) {
                 when (preferences.clockFace) {
@@ -352,6 +414,22 @@ fun FullscreenClockScreen(
                         )
                     }
                 }
+            }
+
+            // Bottom-Center: Compact Media Widget (Shares shifted content group)
+            if (preferences.showMediaPlayer) {
+                MediaMiniWidget(
+                    uiState = mediaWidgetUiState,
+                    isNightMode = preferences.isNightModeEnabled,
+                    accentColor = palette.accentColor,
+                    onPlayPause = onMediaPlayPause,
+                    onPrevious = onMediaPrevious,
+                    onNext = onMediaNext,
+                    onOpenPermissionSettings = onOpenMediaPermissionSettings,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
+                )
             }
         }
 

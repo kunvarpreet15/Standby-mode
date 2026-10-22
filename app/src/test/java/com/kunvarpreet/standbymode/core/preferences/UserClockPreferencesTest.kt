@@ -25,6 +25,50 @@ class UserClockPreferencesTest {
         assertEquals(true, prefs.isBurnInProtectionEnabled)
         assertEquals(true, prefs.keepScreenAwake)
         assertEquals(false, prefs.showBatteryStatus)
+        assertEquals(false, prefs.showMediaPlayer)
+    }
+
+    @Test
+    fun showMediaPlayer_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences(
+            clockFace = ClockFaceType.ANALOG,
+            is24Hour = true,
+            showSeconds = true,
+            showDate = false,
+            accentColor = AccentColorOption.PURPLE,
+            isNightModeEnabled = true,
+            showChargingNotification = true,
+            isBurnInProtectionEnabled = false,
+            keepScreenAwake = true,
+            showBatteryStatus = true,
+            showMediaPlayer = false
+        )
+        val toggled = initial.copy(showMediaPlayer = true)
+
+        assertEquals(true, toggled.showMediaPlayer)
+        assertEquals(ClockFaceType.ANALOG, toggled.clockFace)
+        assertEquals(true, toggled.is24Hour)
+        assertEquals(true, toggled.showSeconds)
+        assertEquals(false, toggled.showDate)
+        assertEquals(AccentColorOption.PURPLE, toggled.accentColor)
+        assertEquals(true, toggled.isNightModeEnabled)
+        assertEquals(true, toggled.showChargingNotification)
+        assertEquals(false, toggled.isBurnInProtectionEnabled)
+        assertEquals(true, toggled.keepScreenAwake)
+        assertEquals(true, toggled.showBatteryStatus)
+    }
+
+    @Test
+    fun showMediaPlayer_remainsCompletelyIndependentOfOtherFeatures() {
+        val initial = UserClockPreferences()
+
+        val mediaEnabled = initial.copy(showMediaPlayer = true)
+        assertEquals(true, mediaEnabled.showMediaPlayer)
+        assertEquals(false, mediaEnabled.showBatteryStatus)
+        assertEquals(false, mediaEnabled.showChargingNotification)
+        assertEquals(false, mediaEnabled.isNightModeEnabled)
+        assertEquals(true, mediaEnabled.keepScreenAwake)
+        assertEquals(true, mediaEnabled.isBurnInProtectionEnabled)
     }
 
     @Test
