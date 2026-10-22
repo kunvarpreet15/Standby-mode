@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.Instant
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Creates a cold, lifecycle-safe Flow that emits the current Instant.
@@ -58,7 +59,7 @@ fun timeFlow(
                 val millisIntoMinute = nowMillis % 60000L
                 (60000L - millisIntoMinute + 10L).coerceAtLeast(100L)
             }
-            delay(delayMillis)
+            delay(delayMillis.milliseconds)
             trySend(Instant.now())
         }
     }

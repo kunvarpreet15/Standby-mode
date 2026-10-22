@@ -56,14 +56,14 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
  */
 @Composable
 fun MediaMiniWidget(
+    modifier: Modifier = Modifier,
     uiState: MediaWidgetUiState,
     isNightMode: Boolean,
     accentColor: Color,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onOpenPermissionSettings: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onOpenPermissionSettings: () -> Unit = {}
 ) {
     val surfaceColor = if (isNightMode) StandByNightSurface else StandBySurfaceCard
     val borderColor = if (isNightMode) StandByNightSurface else StandByBorder

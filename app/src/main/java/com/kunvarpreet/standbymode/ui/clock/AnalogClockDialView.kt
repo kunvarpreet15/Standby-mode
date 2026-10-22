@@ -157,13 +157,13 @@ fun AnalogClockDialView(
  */
 @Composable
 fun AnalogClockDialView(
+    modifier: Modifier = Modifier,
     hours: Int,
     minutes: Int,
     seconds: Int? = null,
     showSeconds: Boolean = true,
     accentColor: Color = StandByAccentOrange,
-    isNightMode: Boolean = false,
-    modifier: Modifier = Modifier
+    isNightMode: Boolean = false
 ) {
     val angles = AnalogClockCalculator.calculateAngles(
         hours = hours,
