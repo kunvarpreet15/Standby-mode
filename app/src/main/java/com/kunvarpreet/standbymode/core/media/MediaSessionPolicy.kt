@@ -8,9 +8,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.PlaybackState
 
-/**
- * Standard media playback actions bitmask matching android.media.session.PlaybackState.
- */
+// Standard media playback actions bitmask matching android.media.session.PlaybackState.
 object PlaybackActions {
     const val ACTION_STOP: Long = 1L shl 0
     const val ACTION_PAUSE: Long = 1L shl 1
@@ -24,9 +22,7 @@ object PlaybackActions {
     const val ACTION_PLAY_PAUSE: Long = 1L shl 9
 }
 
-/**
- * Summary representation of a media session candidate for deterministic selection.
- */
+// Summary representation of a media session candidate for deterministic selection.
 data class SessionCandidate(
     val sessionTokenId: Any,
     val packageName: String,
@@ -35,9 +31,7 @@ data class SessionCandidate(
     val hasMetadata: Boolean = true
 )
 
-/**
- * Raw data extracted from platform media controller and metadata.
- */
+// Raw data extracted from platform media controller and metadata.
 data class RawPlaybackData(
     val title: String? = null,
     val artist: String? = null,
@@ -51,14 +45,10 @@ data class RawPlaybackData(
     val packageName: String? = null
 )
 
-/**
- * Pure policy rules for media session selection, metadata mapping, and access verification.
- */
+// Pure policy rules for media session selection, metadata mapping, and access verification.
 object MediaSessionPolicy {
 
-    /**
-     * Checks whether Notification Listener access has been granted for StandBy Mode.
-     */
+    // Checks whether Notification Listener access has been granted for StandBy Mode.
     fun isNotificationListenerGranted(context: Context): Boolean {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             ?: return false
@@ -70,15 +60,15 @@ object MediaSessionPolicy {
         }
     }
 
-    /**
-     * Deterministically selects the best candidate session from active sessions:
-     * 1. Filters out StandBy Mode's own package to prevent self-selection.
-     * 2. Filters out idle/stopped sessions that have no playback and no metadata.
-     * 3. If current session is actively playing, keep it stable.
-     * 4. If an actively playing candidate exists, switch to it (first in priority order).
-     * 5. If current session is still present (even paused), retain it to avoid jumping.
-     * 6. Otherwise, pick the first candidate in Android's priority list.
-     */
+    /*
+        Deterministically selects the best candidate session from active sessions:
+        1. Filters out StandBy Mode's own package to prevent self-selection.
+        2. Filters out idle/stopped sessions that have no playback and no metadata.
+        3. If current session is actively playing, keep it stable.
+        4. If an actively playing candidate exists, switch to it (first in priority order).
+        5. If current session is still present (even paused), retain it to avoid jumping.
+        6. Otherwise, pick the first candidate in Android's priority list.
+    */
     fun selectBestCandidate(
         candidates: List<SessionCandidate>,
         currentSessionId: Any?,
@@ -113,10 +103,8 @@ object MediaSessionPolicy {
         return validCandidates.firstOrNull()
     }
 
-    /**
-     * Resolves action availability flags given playback state and actions bitmask.
-     * Returns Triple(canPlayPause, canSkipPrevious, canSkipNext).
-     */
+    // Resolves action availability flags given playback state and actions bitmask.
+    // Returns Triple(canPlayPause, canSkipPrevious, canSkipNext).
     fun resolveActions(isPlaying: Boolean, actionsBitmask: Long): Triple<Boolean, Boolean, Boolean> {
         val canPlay = (actionsBitmask and PlaybackActions.ACTION_PLAY) != 0L
         val canPause = (actionsBitmask and PlaybackActions.ACTION_PAUSE) != 0L
@@ -129,25 +117,19 @@ object MediaSessionPolicy {
         return Triple(canPlayPause, canSkipPrevious, canSkipNext)
     }
 
-    /**
-     * Determines whether seeking is supported based on action bitmask, positive duration, and known position.
-     */
+    // Determines whether seeking is supported based on action bitmask, positive duration, and known position.
     fun canSeek(actionsBitmask: Long, durationMillis: Long, positionMillis: Long): Boolean {
         val advertisesSeek = (actionsBitmask and PlaybackActions.ACTION_SEEK_TO) != 0L
         return advertisesSeek && durationMillis > 0L && positionMillis >= 0L
     }
 
-    /**
-     * Clamps a requested seek target position between 0 and track duration.
-     */
+    // Clamps a requested seek target position between 0 and track duration.
     fun clampSeekPosition(targetMillis: Long, durationMillis: Long): Long {
         if (durationMillis <= 0L) return 0L
         return targetMillis.coerceIn(0L, durationMillis)
     }
 
-    /**
-     * Formats a duration in milliseconds to m:ss (e.g. 3:07, 42:18) or H:mm:ss if >= 1 hour.
-     */
+    // Formats a duration in milliseconds to m:ss (e.g. 3:07, 42:18) or H:mm:ss if >= 1 hour.
     fun formatDuration(millis: Long): String {
         if (millis <= 0L) return "0:00"
         val totalSeconds = millis / 1000L
@@ -161,10 +143,8 @@ object MediaSessionPolicy {
         }
     }
 
-    /**
-     * Estimates current playback position based on last reported position, elapsed realtime,
-     * playback speed, and playing state. Does not advance while paused or in non-playing state.
-     */
+    // Estimates current playback position based on last reported position, elapsed realtime,
+    // playback speed, and playing state. Does not advance while paused or in non-playing state.
     fun estimateCurrentPosition(
         positionMillis: Long,
         lastPositionUpdateTime: Long,
@@ -185,9 +165,7 @@ object MediaSessionPolicy {
         return estimated.coerceIn(0L, durationMillis)
     }
 
-    /**
-     * Maps raw playback data into immutable MediaPlaybackInfo.
-     */
+    // Maps raw playback data into immutable MediaPlaybackInfo.
     fun mapPlaybackInfo(raw: RawPlaybackData?): MediaPlaybackInfo? {
         if (raw == null) return null
         val (canPlayPause, canSkipPrev, canSkipNext) = resolveActions(raw.isPlaying, raw.actionsBitmask)
@@ -213,9 +191,7 @@ object MediaSessionPolicy {
         )
     }
 
-    /**
-     * Resolves the overall MediaWidgetUiState based on access status and playback metadata.
-     */
+    // Resolves the overall MediaWidgetUiState based on access status and playback metadata.
     fun resolveWidgetUiState(
         accessState: MediaAccessState,
         playbackInfo: MediaPlaybackInfo?
@@ -227,9 +203,7 @@ object MediaSessionPolicy {
         }
     }
 
-    /**
-     * Safely extracts raw playback data from a platform MediaController.
-     */
+    // Safely extracts raw playback data from a platform MediaController.
     fun extractRawData(controller: MediaController?): RawPlaybackData? {
         if (controller == null) return null
         return try {

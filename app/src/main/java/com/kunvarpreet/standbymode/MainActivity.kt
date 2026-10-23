@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -44,6 +49,7 @@ import com.kunvarpreet.standbymode.core.battery.BatteryState
 import com.kunvarpreet.standbymode.core.battery.rememberBatteryState
 import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
+import com.kunvarpreet.standbymode.core.display.DisplaySpace
 import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
 import com.kunvarpreet.standbymode.core.media.MediaNotificationListenerService
 import com.kunvarpreet.standbymode.core.media.MediaSessionRepository
@@ -58,6 +64,8 @@ import com.kunvarpreet.standbymode.ui.clock.BatteryStatusPill
 import com.kunvarpreet.standbymode.ui.clock.BoldDigitalClockView
 import com.kunvarpreet.standbymode.ui.clock.DatePill
 import com.kunvarpreet.standbymode.ui.clock.RetroFlipClockView
+import com.kunvarpreet.standbymode.ui.display.PageDotsIndicator
+import com.kunvarpreet.standbymode.ui.duo.DuoLayoutScreen
 import com.kunvarpreet.standbymode.ui.media.MediaMiniWidget
 import com.kunvarpreet.standbymode.ui.settings.SettingsButton
 import com.kunvarpreet.standbymode.ui.settings.SettingsScreen
@@ -121,6 +129,13 @@ fun StandByAppShell(
     )
 
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.CLOCK) }
+
+    // Hoist pager state across screen navigation so returning from Settings restores the viewed display space
+    val pagerState = rememberPagerState(
+        initialPage = DisplaySpace.DEFAULT_PAGE_INDEX
+    ) {
+        DisplaySpace.entries.size
+    }
 
     val context = LocalContext.current
     val window = remember(context) {
@@ -237,6 +252,7 @@ fun StandByAppShell(
                 formattedTime = formattedTime,
                 batteryState = batteryState,
                 mediaWidgetUiState = mediaWidgetUiState,
+                pagerState = pagerState,
                 onMediaPlayPause = { mediaSessionRepository.playPause() },
                 onMediaPrevious = { mediaSessionRepository.skipToPrevious() },
                 onMediaNext = { mediaSessionRepository.skipToNext() },
@@ -294,8 +310,8 @@ fun StandByAppShell(
 }
 
 /**
- * Fullscreen ambient clock screen displaying the active persistent clock face,
- * optional date capsule, optional battery status indicator, and discoverable Settings action button.
+ * StandBy ambient display screen hosting horizontal swipe navigation between
+ * Duo Layout (Page 0) and Fullscreen Clock (Page 1).
  */
 @Composable
 fun FullscreenClockScreen(
@@ -303,6 +319,9 @@ fun FullscreenClockScreen(
     formattedTime: com.kunvarpreet.standbymode.core.time.FormattedTime,
     batteryState: BatteryState = BatteryState(),
     mediaWidgetUiState: MediaWidgetUiState = MediaWidgetUiState.NoActiveMedia,
+    pagerState: PagerState = rememberPagerState(initialPage = DisplaySpace.DEFAULT_PAGE_INDEX) {
+        DisplaySpace.entries.size
+    },
     onMediaPlayPause: () -> Unit = {},
     onMediaPrevious: () -> Unit = {},
     onMediaNext: () -> Unit = {},
@@ -311,6 +330,7 @@ fun FullscreenClockScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val palette = ClockThemePalette.resolve(
         isNightMode = preferences.isNightModeEnabled,
         selectedAccent = preferences.accentColor
@@ -343,100 +363,59 @@ fun FullscreenClockScreen(
             .background(StandByBackground)
             .safeDrawingPadding()
     ) {
-        // Shifted Visual Content Group (Clock face + Date Pill + Battery Status Pill)
-        Box(
+        // Horizontal display space pager: exactly 2 pages (Duo Layout and Fullscreen Clock)
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .offset(x = animatedX, y = animatedY)
-        ) {
-            // Top-Left: Date Capsule and Battery Status Indicator
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 24.dp, top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (preferences.showDate && formattedTime.formattedDate.isNotBlank()) {
-                    DatePill(
-                        dateText = formattedTime.formattedDate,
-                        isNightMode = preferences.isNightModeEnabled
-                    )
+                .semantics {
+                    contentDescription = "StandBy display spaces pager"
                 }
+        ) { pageIndex ->
+            val displaySpace = DisplaySpace.fromPageIndex(pageIndex)
 
-                if (preferences.showBatteryStatus && batteryState.isAvailable) {
-                    BatteryStatusPill(
-                        batteryState = batteryState,
-                        accentColor = palette.accentColor,
-                        isNightMode = preferences.isNightModeEnabled
-                    )
-                }
-            }
-
-            // Center: Active Clock Face
+            // Shifted Visual Content Group (OLED burn-in offset applied per space)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = if (preferences.showMediaPlayer) 80.dp else 0.dp),
-                contentAlignment = Alignment.Center
+                    .offset(x = animatedX, y = animatedY)
             ) {
-                when (preferences.clockFace) {
-                    ClockFaceType.BOLD_DIGITAL -> {
-                        BoldDigitalClockView(
-                            hours = formattedTime.hours,
-                            minutes = formattedTime.minutes,
-                            seconds = if (preferences.showSeconds) formattedTime.seconds else null,
-                            amPm = formattedTime.amPm,
-                            accentColor = palette.accentColor,
-                            isNightMode = preferences.isNightModeEnabled,
+                when (displaySpace) {
+                    DisplaySpace.DUO_LAYOUT -> {
+                        DuoLayoutScreen(
+                            preferences = preferences,
+                            formattedTime = formattedTime,
+                            batteryState = batteryState,
+                            mediaWidgetUiState = mediaWidgetUiState,
+                            onMediaPlayPause = onMediaPlayPause,
+                            onMediaPrevious = onMediaPrevious,
+                            onMediaNext = onMediaNext,
+                            onMediaSeek = onMediaSeek,
+                            onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
+                            onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                    ClockFaceType.ANALOG -> {
-                        val hourInt = formattedTime.hours.toIntOrNull() ?: 0
-                        val minInt = formattedTime.minutes.toIntOrNull() ?: 0
-                        val secInt = formattedTime.seconds?.toIntOrNull()
-
-                        AnalogClockDialView(
-                            hours = hourInt,
-                            minutes = minInt,
-                            seconds = secInt,
-                            showSeconds = preferences.showSeconds,
-                            accentColor = palette.accentColor,
-                            isNightMode = preferences.isNightModeEnabled,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    ClockFaceType.RETRO_FLIP -> {
-                        RetroFlipClockView(
-                            hours = formattedTime.hours,
-                            minutes = formattedTime.minutes,
-                            isNightMode = preferences.isNightModeEnabled,
+                    DisplaySpace.FULLSCREEN_CLOCK -> {
+                        FullscreenClockPage(
+                            preferences = preferences,
+                            formattedTime = formattedTime,
+                            batteryState = batteryState,
+                            palette = palette,
+                            mediaWidgetUiState = mediaWidgetUiState,
+                            onMediaPlayPause = onMediaPlayPause,
+                            onMediaPrevious = onMediaPrevious,
+                            onMediaNext = onMediaNext,
+                            onMediaSeek = onMediaSeek,
+                            onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
             }
-
-            // Bottom-Center: Compact Media Widget (Shares shifted content group)
-            if (preferences.showMediaPlayer) {
-                MediaMiniWidget(
-                    uiState = mediaWidgetUiState,
-                    isNightMode = preferences.isNightModeEnabled,
-                    accentColor = palette.accentColor,
-                    onPlayPause = onMediaPlayPause,
-                    onPrevious = onMediaPrevious,
-                    onNext = onMediaNext,
-                    onSeek = onMediaSeek,
-                    onOpenPermissionSettings = onOpenMediaPermissionSettings,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp)
-                )
-            }
         }
 
-        // Top-Right: Discoverable Settings Button (Stationary)
+        // Top-Right: Discoverable Settings Button (Stationary across all display spaces)
         SettingsButton(
             onClick = onOpenSettings,
             isNightMode = preferences.isNightModeEnabled,
@@ -444,6 +423,135 @@ fun FullscreenClockScreen(
                 .align(Alignment.TopEnd)
                 .padding(end = 16.dp, top = 8.dp)
         )
+
+        // Bottom-Center: Subtle Page Dots Indicator (Stationary across all display spaces)
+        PageDotsIndicator(
+            pageCount = DisplaySpace.entries.size,
+            currentPage = pagerState.currentPage,
+            accentColor = palette.accentColor,
+            isNightMode = preferences.isNightModeEnabled,
+            onPageSelected = { targetPage ->
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(targetPage)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 6.dp)
+        )
+    }
+}
+
+/**
+ * Fullscreen ambient clock page preserving the existing single-focus clock experience,
+ * including date capsule, optional battery indicator, center clock face, and compact media player.
+ */
+@Composable
+fun FullscreenClockPage(
+    preferences: UserClockPreferences,
+    formattedTime: com.kunvarpreet.standbymode.core.time.FormattedTime,
+    batteryState: BatteryState,
+    palette: ClockThemePalette,
+    mediaWidgetUiState: MediaWidgetUiState,
+    onMediaPlayPause: () -> Unit,
+    onMediaPrevious: () -> Unit,
+    onMediaNext: () -> Unit,
+    onMediaSeek: (Long) -> Unit,
+    onOpenMediaPermissionSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .semantics {
+                contentDescription = "Fullscreen Clock display"
+            }
+    ) {
+        // Top-Left: Date Capsule and Battery Status Indicator
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 24.dp, top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (preferences.showDate && formattedTime.formattedDate.isNotBlank()) {
+                DatePill(
+                    dateText = formattedTime.formattedDate,
+                    isNightMode = preferences.isNightModeEnabled
+                )
+            }
+
+            if (preferences.showBatteryStatus && batteryState.isAvailable) {
+                BatteryStatusPill(
+                    batteryState = batteryState,
+                    accentColor = palette.accentColor,
+                    isNightMode = preferences.isNightModeEnabled
+                )
+            }
+        }
+
+        // Center: Active Clock Face
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = if (preferences.showMediaPlayer) 88.dp else 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            when (preferences.clockFace) {
+                ClockFaceType.BOLD_DIGITAL -> {
+                    BoldDigitalClockView(
+                        hours = formattedTime.hours,
+                        minutes = formattedTime.minutes,
+                        seconds = if (preferences.showSeconds) formattedTime.seconds else null,
+                        amPm = formattedTime.amPm,
+                        accentColor = palette.accentColor,
+                        isNightMode = preferences.isNightModeEnabled,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                ClockFaceType.ANALOG -> {
+                    val hourInt = formattedTime.hours.toIntOrNull() ?: 0
+                    val minInt = formattedTime.minutes.toIntOrNull() ?: 0
+                    val secInt = formattedTime.seconds?.toIntOrNull()
+
+                    AnalogClockDialView(
+                        hours = hourInt,
+                        minutes = minInt,
+                        seconds = secInt,
+                        showSeconds = preferences.showSeconds,
+                        accentColor = palette.accentColor,
+                        isNightMode = preferences.isNightModeEnabled,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                ClockFaceType.RETRO_FLIP -> {
+                    RetroFlipClockView(
+                        hours = formattedTime.hours,
+                        minutes = formattedTime.minutes,
+                        isNightMode = preferences.isNightModeEnabled,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        // Bottom-Center: Compact Media Widget (positioned comfortably above stationary page dots)
+        if (preferences.showMediaPlayer) {
+            MediaMiniWidget(
+                uiState = mediaWidgetUiState,
+                isNightMode = preferences.isNightModeEnabled,
+                accentColor = palette.accentColor,
+                onPlayPause = onMediaPlayPause,
+                onPrevious = onMediaPrevious,
+                onNext = onMediaNext,
+                onSeek = onMediaSeek,
+                onOpenPermissionSettings = onOpenMediaPermissionSettings,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+            )
+        }
     }
 }
 

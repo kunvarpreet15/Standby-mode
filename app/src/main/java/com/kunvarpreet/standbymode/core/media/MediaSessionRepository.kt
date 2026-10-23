@@ -13,10 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * Lifecycle-aware repository managing Android MediaSession discovery,
- * active session selection, callback registration, and transport actions.
- */
+// Lifecycle-aware repository managing Android MediaSession discovery,
+// active session selection, callback registration, and transport actions.
 class MediaSessionRepository(private val context: Context) {
 
     private val mediaSessionManager =
@@ -55,16 +53,12 @@ class MediaSessionRepository(private val context: Context) {
             }
         }
 
-    /**
-     * Checks if notification listener access is currently granted.
-     */
+    // Checks if notification listener access is currently granted.
     fun hasAccess(): Boolean {
         return MediaSessionPolicy.isNotificationListenerGranted(context)
     }
 
-    /**
-     * Re-checks permission access and immediately refreshes sessions if granted.
-     */
+    // Re-checks permission access and immediately refreshes sessions if granted.
     fun refreshAccess() {
         if (!hasAccess()) {
             if (isObserving) {
@@ -83,9 +77,7 @@ class MediaSessionRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Starts active observation of media sessions. Call when media controls are visible/needed.
-     */
+    // Starts active observation of media sessions. Call when media controls are visible/needed.
     fun startObserving() {
         if (isObserving) return
 
@@ -110,9 +102,7 @@ class MediaSessionRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Stops session observation and unregisters callbacks. Call when screen is hidden or feature disabled.
-     */
+    // Stops session observation and unregisters callbacks. Call when screen is hidden or feature disabled.
     fun stopObserving() {
         if (!isObserving) return
         isObserving = false

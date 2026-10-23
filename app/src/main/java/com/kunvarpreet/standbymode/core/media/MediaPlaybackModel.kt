@@ -2,17 +2,13 @@ package com.kunvarpreet.standbymode.core.media
 
 import android.graphics.Bitmap
 
-/**
- * Access permission state for Android Notification Listener Service.
- */
+// Access permission state for Android Notification Listener Service.
 enum class MediaAccessState {
     PERMISSION_GRANTED,
     PERMISSION_REQUIRED
 }
 
-/**
- * Immutable representation of active media session playback state and metadata.
- */
+// Immutable representation of active media session playback state and metadata.
 data class MediaPlaybackInfo(
     val title: String? = null,
     val artist: String? = null,
@@ -38,24 +34,14 @@ data class MediaPlaybackInfo(
         get() = durationMillis > 0L && positionMillis >= 0L
 }
 
-/**
- * Distinct presentation states for MediaMiniWidget.
- */
+// Distinct presentation states for MediaMiniWidget.
 sealed interface MediaWidgetUiState {
-    /**
-     * User has not granted Notification Listener access in Android Settings.
-     */
+    // User has not granted Notification Listener access in Android Settings.
     data object UnavailableAccess : MediaWidgetUiState
 
-    /**
-     * Notification Listener access is granted, but no compatible media session is playing or paused.
-     */
+    // Notification Listener access is granted, but no compatible media session is playing or paused.
     data object NoActiveMedia : MediaWidgetUiState
 
-    /**
-     * An active media session was selected with current playback metadata.
-     */
-    data class ActiveSession(
-        val info: MediaPlaybackInfo
-    ) : MediaWidgetUiState
+    // An active media session was selected with current playback metadata.
+    data class ActiveSession(val info: MediaPlaybackInfo) : MediaWidgetUiState
 }
