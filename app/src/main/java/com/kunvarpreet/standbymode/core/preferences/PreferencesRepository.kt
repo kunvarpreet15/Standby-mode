@@ -32,6 +32,7 @@ class PreferencesRepository(private val context: Context) {
         val KEEP_SCREEN_AWAKE = booleanPreferencesKey("keep_screen_awake")
         val SHOW_BATTERY_STATUS = booleanPreferencesKey("show_battery_status")
         val SHOW_MEDIA_PLAYER = booleanPreferencesKey("show_media_player")
+        val SHOW_CALENDAR_AGENDA = booleanPreferencesKey("show_calendar_agenda")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -54,6 +55,7 @@ class PreferencesRepository(private val context: Context) {
             val keepScreenAwake = preferences[PreferencesKeys.KEEP_SCREEN_AWAKE] ?: true
             val showBatteryStatus = preferences[PreferencesKeys.SHOW_BATTERY_STATUS] ?: false
             val showMediaPlayer = preferences[PreferencesKeys.SHOW_MEDIA_PLAYER] ?: false
+            val showCalendarAgenda = preferences[PreferencesKeys.SHOW_CALENDAR_AGENDA] ?: false
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -66,7 +68,8 @@ class PreferencesRepository(private val context: Context) {
                 isBurnInProtectionEnabled = isBurnInProtectionEnabled,
                 keepScreenAwake = keepScreenAwake,
                 showBatteryStatus = showBatteryStatus,
-                showMediaPlayer = showMediaPlayer
+                showMediaPlayer = showMediaPlayer,
+                showCalendarAgenda = showCalendarAgenda
             )
         }
 
@@ -141,6 +144,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateShowMediaPlayer(showMediaPlayer: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.SHOW_MEDIA_PLAYER] = showMediaPlayer
+        }
+    }
+
+    suspend fun updateShowCalendarAgenda(showCalendarAgenda: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.SHOW_CALENDAR_AGENDA] = showCalendarAgenda
         }
     }
 }

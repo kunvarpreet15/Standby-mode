@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ComponentName
 import android.content.ContextWrapper
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
@@ -48,6 +49,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kunvarpreet.standbymode.core.battery.BatteryState
 import com.kunvarpreet.standbymode.core.battery.rememberBatteryState
 import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
+import com.kunvarpreet.standbymode.core.calendar.CalendarAgendaUiState
+import com.kunvarpreet.standbymode.core.calendar.CalendarRepository
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.display.DisplaySpace
 import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
@@ -59,6 +62,8 @@ import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.rememberLiveTime
+import com.kunvarpreet.standbymode.core.widget.DuoWidgetPolicy
+import com.kunvarpreet.standbymode.core.widget.DuoWidgetType
 import com.kunvarpreet.standbymode.ui.clock.AnalogClockDialView
 import com.kunvarpreet.standbymode.ui.clock.BatteryStatusPill
 import com.kunvarpreet.standbymode.ui.clock.BoldDigitalClockView
@@ -148,6 +153,10 @@ fun StandByAppShell(
         MediaSessionRepository(context.applicationContext)
     }
 
+    val calendarRepository = remember(context) {
+        CalendarRepository(context.applicationContext)
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     var isActivityForeground by remember {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
@@ -159,6 +168,7 @@ fun StandByAppShell(
                 Lifecycle.Event.ON_RESUME -> {
                     isActivityForeground = true
                     mediaSessionRepository.refreshAccess()
+                    calendarRepository.refresh()
                 }
                 Lifecycle.Event.ON_PAUSE,
                 Lifecycle.Event.ON_STOP,
@@ -198,21 +208,77 @@ fun StandByAppShell(
         }
     }
 
+    val defaultLeft = remember {
+        DuoWidgetPolicy.getDefaultWidget(
+            isLeftPane = true,
+            showMediaPlayer = preferences.showMediaPlayer,
+            showCalendarAgenda = preferences.showCalendarAgenda
+        )
+    }
+    val defaultRight = remember {
+        DuoWidgetPolicy.getDefaultWidget(
+            isLeftPane = false,
+            showMediaPlayer = preferences.showMediaPlayer,
+            showCalendarAgenda = preferences.showCalendarAgenda
+        )
+    }
+
+    var leftPaneWidget by rememberSaveable { mutableStateOf(defaultLeft) }
+    var rightPaneWidget by rememberSaveable { mutableStateOf(defaultRight) }
+
+    // Reconcile selections if preferences change (e.g. Media or Calendar toggled in Settings)
+    val availableLeft = DuoWidgetPolicy.getAvailableWidgets(
+        isLeftPane = true,
+        showMediaPlayer = preferences.showMediaPlayer,
+        showCalendarAgenda = preferences.showCalendarAgenda
+    )
+    val availableRight = DuoWidgetPolicy.getAvailableWidgets(
+        isLeftPane = false,
+        showMediaPlayer = preferences.showMediaPlayer,
+        showCalendarAgenda = preferences.showCalendarAgenda
+    )
+
+    val reconciledLeft = DuoWidgetPolicy.resolveValidSelection(leftPaneWidget, availableLeft, defaultLeft)
+    if (reconciledLeft != leftPaneWidget) {
+        leftPaneWidget = reconciledLeft
+    }
+
+    val reconciledRight = DuoWidgetPolicy.resolveValidSelection(rightPaneWidget, availableRight, defaultRight)
+    if (reconciledRight != rightPaneWidget) {
+        rightPaneWidget = reconciledRight
+    }
+
     // Live time engine is shared across screens without duplicating tickers
     val formattedTime by rememberLiveTime(
         showSeconds = preferences.showSeconds && preferences.clockFace != ClockFaceType.RETRO_FLIP,
         is24Hour = preferences.is24Hour
     )
 
+    val currentDisplaySpace = DisplaySpace.fromPageIndex(pagerState.currentPage)
+
+    val shouldObserveBattery = DuoWidgetPolicy.isBatteryObservationNeeded(
+        showBatteryStatusPref = preferences.showBatteryStatus,
+        currentScreen = currentScreen,
+        isActivityForeground = isActivityForeground,
+        displaySpace = currentDisplaySpace,
+        leftPaneWidget = leftPaneWidget,
+        rightPaneWidget = rightPaneWidget
+    )
+
     val batteryState = rememberBatteryState(
-        enabled = preferences.showBatteryStatus,
+        enabled = shouldObserveBattery,
         isClockScreen = currentScreen == AppScreen.CLOCK,
         isActivityForeground = isActivityForeground
     )
 
-    val shouldObserveMedia = preferences.showMediaPlayer &&
-            currentScreen == AppScreen.CLOCK &&
-            isActivityForeground
+    val shouldObserveMedia = DuoWidgetPolicy.isMediaVisible(
+        isPreferenceEnabled = preferences.showMediaPlayer,
+        currentScreen = currentScreen,
+        isActivityForeground = isActivityForeground,
+        displaySpace = currentDisplaySpace,
+        leftPaneWidget = leftPaneWidget,
+        rightPaneWidget = rightPaneWidget
+    )
 
     DisposableEffect(shouldObserveMedia, mediaSessionRepository) {
         if (shouldObserveMedia) {
@@ -226,6 +292,28 @@ fun StandByAppShell(
     }
 
     val mediaWidgetUiState by mediaSessionRepository.uiStateFlow.collectAsState()
+
+    val shouldObserveCalendar = DuoWidgetPolicy.isCalendarVisible(
+        isPreferenceEnabled = preferences.showCalendarAgenda,
+        currentScreen = currentScreen,
+        isActivityForeground = isActivityForeground,
+        displaySpace = currentDisplaySpace,
+        leftPaneWidget = leftPaneWidget,
+        rightPaneWidget = rightPaneWidget
+    )
+
+    DisposableEffect(shouldObserveCalendar, calendarRepository) {
+        if (shouldObserveCalendar) {
+            calendarRepository.startObserving()
+        } else {
+            calendarRepository.stopObserving()
+        }
+        onDispose {
+            calendarRepository.stopObserving()
+        }
+    }
+
+    val calendarUiState by calendarRepository.uiState.collectAsState()
 
     val openMediaSettings = remember(context) {
         {
@@ -245,6 +333,21 @@ fun StandByAppShell(
         }
     }
 
+    val openCalendarSettings = remember(context) {
+        {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            try {
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                try {
+                    context.startActivity(Intent(Settings.ACTION_SETTINGS))
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     when (currentScreen) {
         AppScreen.CLOCK -> {
             FullscreenClockScreen(
@@ -252,12 +355,19 @@ fun StandByAppShell(
                 formattedTime = formattedTime,
                 batteryState = batteryState,
                 mediaWidgetUiState = mediaWidgetUiState,
+                calendarUiState = calendarUiState,
                 pagerState = pagerState,
+                leftPaneWidget = leftPaneWidget,
+                rightPaneWidget = rightPaneWidget,
+                onLeftPaneWidgetChanged = { leftPaneWidget = it },
+                onRightPaneWidgetChanged = { rightPaneWidget = it },
                 onMediaPlayPause = { mediaSessionRepository.playPause() },
                 onMediaPrevious = { mediaSessionRepository.skipToPrevious() },
                 onMediaNext = { mediaSessionRepository.skipToNext() },
                 onMediaSeek = { positionMillis -> mediaSessionRepository.seekTo(positionMillis) },
                 onOpenMediaPermissionSettings = openMediaSettings,
+                onOpenCalendarPermissionSettings = openCalendarSettings,
+                onCalendarRetry = { calendarRepository.refresh() },
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 modifier = modifier
             )
@@ -302,6 +412,9 @@ fun StandByAppShell(
                 onShowMediaPlayerChanged = { showMedia ->
                     coroutineScope.launch { repository.updateShowMediaPlayer(showMedia) }
                 },
+                onShowCalendarAgendaChanged = { showCalendar ->
+                    coroutineScope.launch { repository.updateShowCalendarAgenda(showCalendar) }
+                },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
             )
@@ -319,14 +432,21 @@ fun FullscreenClockScreen(
     formattedTime: com.kunvarpreet.standbymode.core.time.FormattedTime,
     batteryState: BatteryState = BatteryState(),
     mediaWidgetUiState: MediaWidgetUiState = MediaWidgetUiState.NoActiveMedia,
+    calendarUiState: CalendarAgendaUiState = CalendarAgendaUiState.Loading,
     pagerState: PagerState = rememberPagerState(initialPage = DisplaySpace.DEFAULT_PAGE_INDEX) {
         DisplaySpace.entries.size
     },
+    leftPaneWidget: DuoWidgetType = DuoWidgetType.CLOCK,
+    rightPaneWidget: DuoWidgetType = if (preferences.showMediaPlayer) DuoWidgetType.MEDIA else DuoWidgetType.BATTERY_STATUS,
+    onLeftPaneWidgetChanged: (DuoWidgetType) -> Unit = {},
+    onRightPaneWidgetChanged: (DuoWidgetType) -> Unit = {},
     onMediaPlayPause: () -> Unit = {},
     onMediaPrevious: () -> Unit = {},
     onMediaNext: () -> Unit = {},
     onMediaSeek: (Long) -> Unit = {},
     onOpenMediaPermissionSettings: () -> Unit = {},
+    onOpenCalendarPermissionSettings: () -> Unit = {},
+    onCalendarRetry: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -387,11 +507,18 @@ fun FullscreenClockScreen(
                             formattedTime = formattedTime,
                             batteryState = batteryState,
                             mediaWidgetUiState = mediaWidgetUiState,
+                            calendarUiState = calendarUiState,
+                            leftPaneWidget = leftPaneWidget,
+                            rightPaneWidget = rightPaneWidget,
+                            onLeftPaneWidgetChanged = onLeftPaneWidgetChanged,
+                            onRightPaneWidgetChanged = onRightPaneWidgetChanged,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
                             onMediaSeek = onMediaSeek,
                             onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
+                            onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
+                            onCalendarRetry = onCalendarRetry,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )

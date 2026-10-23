@@ -26,6 +26,53 @@ class UserClockPreferencesTest {
         assertEquals(true, prefs.keepScreenAwake)
         assertEquals(false, prefs.showBatteryStatus)
         assertEquals(false, prefs.showMediaPlayer)
+        assertEquals(false, prefs.showCalendarAgenda)
+    }
+
+    @Test
+    fun showCalendarAgenda_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences(
+            clockFace = ClockFaceType.ANALOG,
+            is24Hour = true,
+            showSeconds = true,
+            showDate = false,
+            accentColor = AccentColorOption.PURPLE,
+            isNightModeEnabled = true,
+            showChargingNotification = true,
+            isBurnInProtectionEnabled = false,
+            keepScreenAwake = true,
+            showBatteryStatus = true,
+            showMediaPlayer = true,
+            showCalendarAgenda = false
+        )
+        val toggled = initial.copy(showCalendarAgenda = true)
+
+        assertEquals(true, toggled.showCalendarAgenda)
+        assertEquals(ClockFaceType.ANALOG, toggled.clockFace)
+        assertEquals(true, toggled.is24Hour)
+        assertEquals(true, toggled.showSeconds)
+        assertEquals(false, toggled.showDate)
+        assertEquals(AccentColorOption.PURPLE, toggled.accentColor)
+        assertEquals(true, toggled.isNightModeEnabled)
+        assertEquals(true, toggled.showChargingNotification)
+        assertEquals(false, toggled.isBurnInProtectionEnabled)
+        assertEquals(true, toggled.keepScreenAwake)
+        assertEquals(true, toggled.showBatteryStatus)
+        assertEquals(true, toggled.showMediaPlayer)
+    }
+
+    @Test
+    fun showCalendarAgenda_remainsCompletelyIndependentOfOtherFeatures() {
+        val initial = UserClockPreferences()
+
+        val calendarEnabled = initial.copy(showCalendarAgenda = true)
+        assertEquals(true, calendarEnabled.showCalendarAgenda)
+        assertEquals(false, calendarEnabled.showMediaPlayer)
+        assertEquals(false, calendarEnabled.showBatteryStatus)
+        assertEquals(false, calendarEnabled.showChargingNotification)
+        assertEquals(false, calendarEnabled.isNightModeEnabled)
+        assertEquals(true, calendarEnabled.keepScreenAwake)
+        assertEquals(true, calendarEnabled.isBurnInProtectionEnabled)
     }
 
     @Test

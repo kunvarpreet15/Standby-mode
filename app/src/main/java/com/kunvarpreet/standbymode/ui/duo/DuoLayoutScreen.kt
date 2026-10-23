@@ -30,11 +30,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kunvarpreet.standbymode.core.battery.BatteryState
+import com.kunvarpreet.standbymode.core.calendar.CalendarAgendaUiState
 import com.kunvarpreet.standbymode.core.media.MediaWidgetUiState
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.FormattedTime
+import com.kunvarpreet.standbymode.core.widget.DuoWidgetPolicy
+import com.kunvarpreet.standbymode.core.widget.DuoWidgetType
+import com.kunvarpreet.standbymode.ui.battery.BatteryWidgetView
+import com.kunvarpreet.standbymode.ui.calendar.CalendarMiniWidget
 import com.kunvarpreet.standbymode.ui.clock.AnalogClockDialView
 import com.kunvarpreet.standbymode.ui.clock.BatteryStatusPill
 import com.kunvarpreet.standbymode.ui.clock.BoldDigitalClockView
@@ -50,36 +55,54 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
 
 /**
- * Duo Layout Screen displaying two equally weighted panel areas:
- * - Left Panel: Active Clock face (Bold Digital, Analog, Retro Flip) with Date and Battery pills.
- * - Right Panel: Secondary widget content (MediaMiniWidget when enabled, or quiet empty state with Settings entry).
+ * Duo Layout Screen displaying two independently navigable vertical widget stacks:
+ * - Left Pane Stack: Supports Clock, Calendar, Battery, and Media widgets (default: Clock).
+ * - Right Pane Stack: Supports Media, Calendar, Battery, and Clock widgets (default: Media if enabled, else Battery).
  *
  * Automatically adapts between side-by-side landscape layout and stacked vertical portrait fallback.
  */
 @Composable
 fun DuoLayoutScreen(
+    modifier: Modifier = Modifier,
     preferences: UserClockPreferences,
     formattedTime: FormattedTime,
     batteryState: BatteryState,
     mediaWidgetUiState: MediaWidgetUiState,
+    calendarUiState: CalendarAgendaUiState = CalendarAgendaUiState.Loading,
+    leftPaneWidget: DuoWidgetType = DuoWidgetType.CLOCK,
+    rightPaneWidget: DuoWidgetType = if (preferences.showMediaPlayer) DuoWidgetType.MEDIA else DuoWidgetType.BATTERY_STATUS,
+    onLeftPaneWidgetChanged: (DuoWidgetType) -> Unit = {},
+    onRightPaneWidgetChanged: (DuoWidgetType) -> Unit = {},
     onMediaPlayPause: () -> Unit,
     onMediaPrevious: () -> Unit,
     onMediaNext: () -> Unit,
     onMediaSeek: (Long) -> Unit,
     onOpenMediaPermissionSettings: () -> Unit,
-    onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    onOpenCalendarPermissionSettings: () -> Unit = {},
+    onCalendarRetry: () -> Unit = {},
+    onOpenSettings: () -> Unit
 ) {
     val palette = ClockThemePalette.resolve(
         isNightMode = preferences.isNightModeEnabled,
         selectedAccent = preferences.accentColor
     )
 
+    val availableLeftWidgets = DuoWidgetPolicy.getAvailableWidgets(
+        isLeftPane = true,
+        showMediaPlayer = preferences.showMediaPlayer,
+        showCalendarAgenda = preferences.showCalendarAgenda
+    )
+    val availableRightWidgets = DuoWidgetPolicy.getAvailableWidgets(
+        isLeftPane = false,
+        showMediaPlayer = preferences.showMediaPlayer,
+        showCalendarAgenda = preferences.showCalendarAgenda
+    )
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .semantics {
-                contentDescription = "Duo Layout with clock and secondary content panels"
+                contentDescription = "Duo Layout with independent vertical widget stacks"
             }
     ) {
         val isLandscape = maxWidth > maxHeight
@@ -98,20 +121,42 @@ fun DuoLayoutScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Panel: Clock Visual Anchor
+                // Left Panel Widget Stack
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
                     contentAlignment = Alignment.Center
                 ) {
-                    DuoClockPane(
-                        preferences = preferences,
-                        formattedTime = formattedTime,
-                        batteryState = batteryState,
-                        palette = palette,
+                    DuoWidgetStackView(
+                        availableWidgets = availableLeftWidgets,
+                        selectedWidget = leftPaneWidget,
+                        onWidgetSelected = onLeftPaneWidgetChanged,
+                        paneLabel = "Left pane",
+                        accentColor = palette.accentColor,
+                        isNightMode = preferences.isNightModeEnabled,
+                        indicatorAlignment = Alignment.CenterEnd,
                         modifier = Modifier.fillMaxSize()
-                    )
+                    ) { widgetType ->
+                        DuoWidgetRenderer(
+                            widgetType = widgetType,
+                            preferences = preferences,
+                            formattedTime = formattedTime,
+                            batteryState = batteryState,
+                            palette = palette,
+                            mediaWidgetUiState = mediaWidgetUiState,
+                            calendarUiState = calendarUiState,
+                            onMediaPlayPause = onMediaPlayPause,
+                            onMediaPrevious = onMediaPrevious,
+                            onMediaNext = onMediaNext,
+                            onMediaSeek = onMediaSeek,
+                            onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
+                            onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
+                            onCalendarRetry = onCalendarRetry,
+                            onOpenSettings = onOpenSettings,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 // Restrained Divider
@@ -122,29 +167,46 @@ fun DuoLayoutScreen(
                         .background(dividerColor)
                 )
 
-                // Right Panel: Secondary Content
+                // Right Panel Widget Stack
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
                     contentAlignment = Alignment.Center
                 ) {
-                    DuoSecondaryPane(
-                        preferences = preferences,
-                        palette = palette,
-                        mediaWidgetUiState = mediaWidgetUiState,
-                        onMediaPlayPause = onMediaPlayPause,
-                        onMediaPrevious = onMediaPrevious,
-                        onMediaNext = onMediaNext,
-                        onMediaSeek = onMediaSeek,
-                        onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
-                        onOpenSettings = onOpenSettings,
+                    DuoWidgetStackView(
+                        availableWidgets = availableRightWidgets,
+                        selectedWidget = rightPaneWidget,
+                        onWidgetSelected = onRightPaneWidgetChanged,
+                        paneLabel = "Right pane",
+                        accentColor = palette.accentColor,
+                        isNightMode = preferences.isNightModeEnabled,
+                        indicatorAlignment = Alignment.CenterEnd,
                         modifier = Modifier.fillMaxSize()
-                    )
+                    ) { widgetType ->
+                        DuoWidgetRenderer(
+                            widgetType = widgetType,
+                            preferences = preferences,
+                            formattedTime = formattedTime,
+                            batteryState = batteryState,
+                            palette = palette,
+                            mediaWidgetUiState = mediaWidgetUiState,
+                            calendarUiState = calendarUiState,
+                            onMediaPlayPause = onMediaPlayPause,
+                            onMediaPrevious = onMediaPrevious,
+                            onMediaNext = onMediaNext,
+                            onMediaSeek = onMediaSeek,
+                            onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
+                            onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
+                            onCalendarRetry = onCalendarRetry,
+                            onOpenSettings = onOpenSettings,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         } else {
-            // Portrait Mode: Readable stacked fallback
+            // Portrait Mode: Readable stacked vertical fallback
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -152,20 +214,42 @@ fun DuoLayoutScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Panel: Clock Visual Anchor
+                // Top Panel Widget Stack
                 Box(
                     modifier = Modifier
                         .weight(1.15f)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    DuoClockPane(
-                        preferences = preferences,
-                        formattedTime = formattedTime,
-                        batteryState = batteryState,
-                        palette = palette,
+                    DuoWidgetStackView(
+                        availableWidgets = availableLeftWidgets,
+                        selectedWidget = leftPaneWidget,
+                        onWidgetSelected = onLeftPaneWidgetChanged,
+                        paneLabel = "Top pane",
+                        accentColor = palette.accentColor,
+                        isNightMode = preferences.isNightModeEnabled,
+                        indicatorAlignment = Alignment.CenterEnd,
                         modifier = Modifier.fillMaxSize()
-                    )
+                    ) { widgetType ->
+                        DuoWidgetRenderer(
+                            widgetType = widgetType,
+                            preferences = preferences,
+                            formattedTime = formattedTime,
+                            batteryState = batteryState,
+                            palette = palette,
+                            mediaWidgetUiState = mediaWidgetUiState,
+                            calendarUiState = calendarUiState,
+                            onMediaPlayPause = onMediaPlayPause,
+                            onMediaPrevious = onMediaPrevious,
+                            onMediaNext = onMediaNext,
+                            onMediaSeek = onMediaSeek,
+                            onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
+                            onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
+                            onCalendarRetry = onCalendarRetry,
+                            onOpenSettings = onOpenSettings,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 // Restrained Divider
@@ -176,25 +260,42 @@ fun DuoLayoutScreen(
                         .background(dividerColor)
                 )
 
-                // Bottom Panel: Secondary Content
+                // Bottom Panel Widget Stack
                 Box(
                     modifier = Modifier
                         .weight(0.85f)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    DuoSecondaryPane(
-                        preferences = preferences,
-                        palette = palette,
-                        mediaWidgetUiState = mediaWidgetUiState,
-                        onMediaPlayPause = onMediaPlayPause,
-                        onMediaPrevious = onMediaPrevious,
-                        onMediaNext = onMediaNext,
-                        onMediaSeek = onMediaSeek,
-                        onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
-                        onOpenSettings = onOpenSettings,
+                    DuoWidgetStackView(
+                        availableWidgets = availableRightWidgets,
+                        selectedWidget = rightPaneWidget,
+                        onWidgetSelected = onRightPaneWidgetChanged,
+                        paneLabel = "Bottom pane",
+                        accentColor = palette.accentColor,
+                        isNightMode = preferences.isNightModeEnabled,
+                        indicatorAlignment = Alignment.CenterEnd,
                         modifier = Modifier.fillMaxSize()
-                    )
+                    ) { widgetType ->
+                        DuoWidgetRenderer(
+                            widgetType = widgetType,
+                            preferences = preferences,
+                            formattedTime = formattedTime,
+                            batteryState = batteryState,
+                            palette = palette,
+                            mediaWidgetUiState = mediaWidgetUiState,
+                            calendarUiState = calendarUiState,
+                            onMediaPlayPause = onMediaPlayPause,
+                            onMediaPrevious = onMediaPrevious,
+                            onMediaNext = onMediaNext,
+                            onMediaSeek = onMediaSeek,
+                            onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
+                            onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
+                            onCalendarRetry = onCalendarRetry,
+                            onOpenSettings = onOpenSettings,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
@@ -202,7 +303,75 @@ fun DuoLayoutScreen(
 }
 
 /**
- * Left/Top panel of the Duo Layout: displays the active persistent clock face
+ * Reusable content renderer delegating to the corresponding built-in widget composable.
+ */
+@Composable
+fun DuoWidgetRenderer(
+    widgetType: DuoWidgetType,
+    preferences: UserClockPreferences,
+    formattedTime: FormattedTime,
+    batteryState: BatteryState,
+    palette: ClockThemePalette,
+    mediaWidgetUiState: MediaWidgetUiState,
+    calendarUiState: CalendarAgendaUiState = CalendarAgendaUiState.Loading,
+    onMediaPlayPause: () -> Unit,
+    onMediaPrevious: () -> Unit,
+    onMediaNext: () -> Unit,
+    onMediaSeek: (Long) -> Unit,
+    onOpenMediaPermissionSettings: () -> Unit,
+    onOpenCalendarPermissionSettings: () -> Unit = {},
+    onCalendarRetry: () -> Unit = {},
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when (widgetType) {
+        DuoWidgetType.CLOCK -> {
+            DuoClockPane(
+                preferences = preferences,
+                formattedTime = formattedTime,
+                batteryState = batteryState,
+                palette = palette,
+                modifier = modifier
+            )
+        }
+        DuoWidgetType.BATTERY_STATUS -> {
+            BatteryWidgetView(
+                batteryState = batteryState,
+                accentColor = palette.accentColor,
+                isNightMode = preferences.isNightModeEnabled,
+                modifier = modifier
+            )
+        }
+        DuoWidgetType.MEDIA -> {
+            DuoSecondaryPane(
+                preferences = preferences,
+                palette = palette,
+                mediaWidgetUiState = mediaWidgetUiState,
+                onMediaPlayPause = onMediaPlayPause,
+                onMediaPrevious = onMediaPrevious,
+                onMediaNext = onMediaNext,
+                onMediaSeek = onMediaSeek,
+                onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
+                onOpenSettings = onOpenSettings,
+                modifier = modifier
+            )
+        }
+        DuoWidgetType.CALENDAR -> {
+            CalendarMiniWidget(
+                uiState = calendarUiState,
+                accentColor = palette.accentColor,
+                isNightMode = preferences.isNightModeEnabled,
+                is24Hour = preferences.is24Hour,
+                onOpenPermissionSettings = onOpenCalendarPermissionSettings,
+                onRetry = onCalendarRetry,
+                modifier = modifier
+            )
+        }
+    }
+}
+
+/**
+ * Clock panel for Duo Layout: displays the active persistent clock face
  * scaled appropriately for panel bounds, along with optional Date and Battery status pills.
  */
 @Composable
@@ -294,9 +463,7 @@ fun DuoClockPane(
 }
 
 /**
- * Right/Bottom panel of the Duo Layout: displays the secondary widget content.
- * When media playback is enabled: displays the MediaMiniWidget (active, paused, no media, or permission prompt).
- * When media playback is disabled: displays a quiet empty state with a Settings entry point.
+ * Media secondary panel: displays MediaMiniWidget when enabled or quiet empty state when disabled.
  */
 @Composable
 fun DuoSecondaryPane(

@@ -87,6 +87,7 @@ fun SettingsScreen(
     onKeepScreenAwakeChanged: (Boolean) -> Unit = {},
     onShowBatteryStatusChanged: (Boolean) -> Unit = {},
     onShowMediaPlayerChanged: (Boolean) -> Unit = {},
+    onShowCalendarAgendaChanged: (Boolean) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -95,6 +96,37 @@ fun SettingsScreen(
     var showPermissionExplanationDialog by remember { mutableStateOf(false) }
     var explanationDialogTitle by remember { mutableStateOf("") }
     var explanationDialogMessage by remember { mutableStateOf("") }
+
+    var showCalendarPermissionExplanationDialog by remember { mutableStateOf(false) }
+    var showCalendarPermissionDeniedFeedback by remember { mutableStateOf(false) }
+
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            onShowCalendarAgendaChanged(true)
+        } else {
+            onShowCalendarAgendaChanged(false)
+            showCalendarPermissionDeniedFeedback = true
+        }
+    }
+
+    val onToggleCalendarAgenda: (Boolean) -> Unit = { shouldEnable ->
+        if (shouldEnable) {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_CALENDAR
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasPermission) {
+                onShowCalendarAgendaChanged(true)
+            } else {
+                showCalendarPermissionExplanationDialog = true
+            }
+        } else {
+            onShowCalendarAgendaChanged(false)
+        }
+    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -328,6 +360,88 @@ fun SettingsScreen(
         )
     }
 
+    if (showCalendarPermissionExplanationDialog) {
+        AlertDialog(
+            onDismissRequest = { showCalendarPermissionExplanationDialog = false },
+            title = {
+                Text(
+                    text = "Calendar Access Required",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "StandBy Mode displays the current month and upcoming events from your calendar on the bedside display.\n\nPrivacy Notice: StandBy Mode only reads calendar information (dates and event titles/times) necessary to display your upcoming schedule. StandBy Mode never creates, edits, or deletes your events, and never collects attendee or location details.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCalendarPermissionExplanationDialog = false
+                        calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+                    }
+                ) {
+                    Text(
+                        text = "Grant Access",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCalendarPermissionExplanationDialog = false }) {
+                    Text(
+                        text = "Cancel",
+                        color = StandByTextMuted,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (showCalendarPermissionDeniedFeedback) {
+        AlertDialog(
+            onDismissRequest = { showCalendarPermissionDeniedFeedback = false },
+            title = {
+                Text(
+                    text = "Calendar Access Not Granted",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "Calendar permission was not granted. The Calendar & Agenda widget remains disabled until permission is granted.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showCalendarPermissionDeniedFeedback = false }) {
+                    Text(
+                        text = "OK",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -397,7 +511,8 @@ fun SettingsScreen(
                                 onBurnInProtectionChanged = onBurnInProtectionChanged,
                                 onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                                 onShowBatteryStatusChanged = onShowBatteryStatusChanged,
-                                onToggleMediaPlayer = onToggleMediaPlayer
+                                onToggleMediaPlayer = onToggleMediaPlayer,
+                                onToggleCalendarAgenda = onToggleCalendarAgenda
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -434,7 +549,8 @@ fun SettingsScreen(
                             onBurnInProtectionChanged = onBurnInProtectionChanged,
                             onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                             onShowBatteryStatusChanged = onShowBatteryStatusChanged,
-                            onToggleMediaPlayer = onToggleMediaPlayer
+                            onToggleMediaPlayer = onToggleMediaPlayer,
+                            onToggleCalendarAgenda = onToggleCalendarAgenda
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -507,7 +623,8 @@ private fun SettingsContent(
     onBurnInProtectionChanged: (Boolean) -> Unit,
     onKeepScreenAwakeChanged: (Boolean) -> Unit,
     onShowBatteryStatusChanged: (Boolean) -> Unit,
-    onToggleMediaPlayer: (Boolean) -> Unit
+    onToggleMediaPlayer: (Boolean) -> Unit,
+    onToggleCalendarAgenda: (Boolean) -> Unit
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -635,7 +752,18 @@ private fun SettingsContent(
         )
     }
 
-    // 6. Charging Awareness
+    // 6. Calendar & Agenda
+    SettingsSection(title = "Calendar & Agenda") {
+        SettingsToggleRow(
+            title = "Show calendar agenda",
+            subtitle = "Display current month and upcoming events from your calendar",
+            checked = preferences.showCalendarAgenda,
+            onCheckedChange = onToggleCalendarAgenda,
+            accentColor = accentColor
+        )
+    }
+
+    // 7. Charging Awareness
     SettingsSection(title = "Charging Awareness") {
         SettingsToggleRow(
             title = "Show notification when charging",

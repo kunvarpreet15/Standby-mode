@@ -101,5 +101,6 @@ data class UserClockPreferences(
     val isBurnInProtectionEnabled: Boolean = true,
     val keepScreenAwake: Boolean = true,
     val showBatteryStatus: Boolean = false,
-    val showMediaPlayer: Boolean = false
+    val showMediaPlayer: Boolean = false,
+    val showCalendarAgenda: Boolean = false
 )
