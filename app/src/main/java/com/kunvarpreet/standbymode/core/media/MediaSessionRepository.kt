@@ -311,4 +311,21 @@ class MediaSessionRepository(private val context: Context) {
             handleSessionDestroyed()
         }
     }
+
+    fun seekTo(targetPositionMillis: Long) {
+        try {
+            val controller = selectedController ?: return
+            val playbackState = controller.playbackState ?: return
+            val duration = controller.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+            if (!MediaSessionPolicy.canSeek(playbackState.actions, duration, playbackState.position)) {
+                Log.d("MediaSessionRepo", "seekTo ignored: action not supported or invalid duration")
+                return
+            }
+            val clamped = MediaSessionPolicy.clampSeekPosition(targetPositionMillis, duration)
+            controller.transportControls.seekTo(clamped)
+        } catch (e: Exception) {
+            Log.e("MediaSessionRepo", "Error executing seekTo transport control", e)
+            handleSessionDestroyed()
+        }
+    }
 }

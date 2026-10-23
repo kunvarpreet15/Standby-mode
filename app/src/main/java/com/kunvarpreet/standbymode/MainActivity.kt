@@ -240,6 +240,7 @@ fun StandByAppShell(
                 onMediaPlayPause = { mediaSessionRepository.playPause() },
                 onMediaPrevious = { mediaSessionRepository.skipToPrevious() },
                 onMediaNext = { mediaSessionRepository.skipToNext() },
+                onMediaSeek = { positionMillis -> mediaSessionRepository.seekTo(positionMillis) },
                 onOpenMediaPermissionSettings = openMediaSettings,
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 modifier = modifier
@@ -305,6 +306,7 @@ fun FullscreenClockScreen(
     onMediaPlayPause: () -> Unit = {},
     onMediaPrevious: () -> Unit = {},
     onMediaNext: () -> Unit = {},
+    onMediaSeek: (Long) -> Unit = {},
     onOpenMediaPermissionSettings: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -375,7 +377,7 @@ fun FullscreenClockScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = if (preferences.showMediaPlayer) 64.dp else 0.dp),
+                    .padding(bottom = if (preferences.showMediaPlayer) 80.dp else 0.dp),
                 contentAlignment = Alignment.Center
             ) {
                 when (preferences.clockFace) {
@@ -425,6 +427,7 @@ fun FullscreenClockScreen(
                     onPlayPause = onMediaPlayPause,
                     onPrevious = onMediaPrevious,
                     onNext = onMediaNext,
+                    onSeek = onMediaSeek,
                     onOpenPermissionSettings = onOpenMediaPermissionSettings,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)

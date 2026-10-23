@@ -343,4 +343,267 @@ class MediaSessionPolicyTest {
         )
         assertEquals(playing, result)
     }
+
+    // 4. Playback Progress Estimation Tests
+
+    @Test
+    fun estimateCurrentPosition_advancesWhilePlayingAtNormalSpeed() {
+        val position = 10_000L // 10s
+        val lastUpdate = 100_000L
+        val currentElapsed = 105_000L // 5s elapsed
+        val duration = 60_000L // 60s
+
+        val estimated = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = position,
+            lastPositionUpdateTime = lastUpdate,
+            playbackSpeed = 1.0f,
+            isPlaying = true,
+            durationMillis = duration,
+            currentElapsedRealtime = currentElapsed
+        )
+        assertEquals(15_000L, estimated)
+    }
+
+    @Test
+    fun estimateCurrentPosition_maintainsStablePositionWhilePaused() {
+        val position = 10_000L
+        val lastUpdate = 100_000L
+        val currentElapsed = 120_000L // 20s later, but paused!
+        val duration = 60_000L
+
+        val estimated = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = position,
+            lastPositionUpdateTime = lastUpdate,
+            playbackSpeed = 1.0f,
+            isPlaying = false,
+            durationMillis = duration,
+            currentElapsedRealtime = currentElapsed
+        )
+        assertEquals(10_000L, estimated)
+    }
+
+    @Test
+    fun estimateCurrentPosition_adjustsForPlaybackSpeed() {
+        val position = 10_000L
+        val lastUpdate = 100_000L
+        val currentElapsed = 104_000L // 4s elapsed
+        val duration = 60_000L
+
+        // 1.5x speed: 4s elapsed = 6s audio advanced
+        val estimated15x = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = position,
+            lastPositionUpdateTime = lastUpdate,
+            playbackSpeed = 1.5f,
+            isPlaying = true,
+            durationMillis = duration,
+            currentElapsedRealtime = currentElapsed
+        )
+        assertEquals(16_000L, estimated15x)
+
+        // 0.5x speed: 4s elapsed = 2s audio advanced
+        val estimated05x = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = position,
+            lastPositionUpdateTime = lastUpdate,
+            playbackSpeed = 0.5f,
+            isPlaying = true,
+            durationMillis = duration,
+            currentElapsedRealtime = currentElapsed
+        )
+        assertEquals(12_000L, estimated05x)
+
+        // 0.0x speed: does not advance
+        val estimated0x = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = position,
+            lastPositionUpdateTime = lastUpdate,
+            playbackSpeed = 0.0f,
+            isPlaying = true,
+            durationMillis = duration,
+            currentElapsedRealtime = currentElapsed
+        )
+        assertEquals(10_000L, estimated0x)
+    }
+
+    @Test
+    fun estimateCurrentPosition_handlesMissingOrInvalidDuration() {
+        // Zero duration
+        val zeroDuration = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = 5_000L,
+            lastPositionUpdateTime = 100_000L,
+            playbackSpeed = 1.0f,
+            isPlaying = true,
+            durationMillis = 0L,
+            currentElapsedRealtime = 105_000L
+        )
+        assertEquals(0L, zeroDuration)
+
+        // Negative duration
+        val negativeDuration = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = 5_000L,
+            lastPositionUpdateTime = 100_000L,
+            playbackSpeed = 1.0f,
+            isPlaying = true,
+            durationMillis = -1L,
+            currentElapsedRealtime = 105_000L
+        )
+        assertEquals(0L, negativeDuration)
+    }
+
+    @Test
+    fun estimateCurrentPosition_handlesUnknownOrNegativePosition() {
+        val unknownPosition = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = -1L, // PlaybackState.PLAYBACK_POSITION_UNKNOWN
+            lastPositionUpdateTime = 100_000L,
+            playbackSpeed = 1.0f,
+            isPlaying = true,
+            durationMillis = 60_000L,
+            currentElapsedRealtime = 105_000L
+        )
+        assertEquals(0L, unknownPosition)
+    }
+
+    @Test
+    fun estimateCurrentPosition_clampsAtTrackDuration() {
+        val position = 58_000L
+        val lastUpdate = 100_000L
+        val currentElapsed = 110_000L // 10s elapsed -> would be 68_000L
+        val duration = 60_000L
+
+        val estimated = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = position,
+            lastPositionUpdateTime = lastUpdate,
+            playbackSpeed = 1.0f,
+            isPlaying = true,
+            durationMillis = duration,
+            currentElapsedRealtime = currentElapsed
+        )
+        assertEquals(60_000L, estimated)
+    }
+
+    @Test
+    fun estimateCurrentPosition_clampsAtZeroForNegativeCalculations() {
+        val estimated = MediaSessionPolicy.estimateCurrentPosition(
+            positionMillis = 0L,
+            lastPositionUpdateTime = 0L,
+            playbackSpeed = 1.0f,
+            isPlaying = false,
+            durationMillis = 60_000L,
+            currentElapsedRealtime = 0L
+        )
+        assertEquals(0L, estimated)
+    }
+
+    // 5. Time Formatting Tests
+
+    @Test
+    fun formatDuration_formatsZeroAndNegative() {
+        assertEquals("0:00", MediaSessionPolicy.formatDuration(0L))
+        assertEquals("0:00", MediaSessionPolicy.formatDuration(-1000L))
+    }
+
+    @Test
+    fun formatDuration_formatsSecondsWithZeroPadding() {
+        assertEquals("0:07", MediaSessionPolicy.formatDuration(7_000L))
+        assertEquals("0:45", MediaSessionPolicy.formatDuration(45_000L))
+    }
+
+    @Test
+    fun formatDuration_formatsMinutesAndSecondsStandard() {
+        assertEquals("3:07", MediaSessionPolicy.formatDuration(187_000L))
+        assertEquals("42:18", MediaSessionPolicy.formatDuration(2_538_000L))
+    }
+
+    @Test
+    fun formatDuration_formatsHoursMinutesSeconds() {
+        assertEquals("1:02:18", MediaSessionPolicy.formatDuration(3_738_000L))
+        assertEquals("10:00:00", MediaSessionPolicy.formatDuration(36_000_000L))
+    }
+
+    // 6. Seeking Capability and Clamping Tests
+
+    @Test
+    fun canSeek_returnsTrueWhenActionSeekToPresentWithValidDurationAndPosition() {
+        val actions = PlaybackActions.ACTION_SEEK_TO or PlaybackActions.ACTION_PLAY
+        val result = MediaSessionPolicy.canSeek(
+            actionsBitmask = actions,
+            durationMillis = 180_000L,
+            positionMillis = 5_000L
+        )
+        assertTrue(result)
+    }
+
+    @Test
+    fun canSeek_returnsFalseWhenActionSeekToMissing() {
+        val actions = PlaybackActions.ACTION_PLAY or PlaybackActions.ACTION_PAUSE
+        val result = MediaSessionPolicy.canSeek(
+            actionsBitmask = actions,
+            durationMillis = 180_000L,
+            positionMillis = 5_000L
+        )
+        assertFalse(result)
+    }
+
+    @Test
+    fun canSeek_returnsFalseWhenDurationIsZeroOrNegative() {
+        val actions = PlaybackActions.ACTION_SEEK_TO
+        assertFalse(MediaSessionPolicy.canSeek(actions, durationMillis = 0L, positionMillis = 0L))
+        assertFalse(MediaSessionPolicy.canSeek(actions, durationMillis = -1L, positionMillis = 0L))
+    }
+
+    @Test
+    fun canSeek_returnsFalseWhenPositionIsUnknownOrNegative() {
+        val actions = PlaybackActions.ACTION_SEEK_TO
+        assertFalse(MediaSessionPolicy.canSeek(actions, durationMillis = 60_000L, positionMillis = -1L))
+    }
+
+    @Test
+    fun clampSeekPosition_clampsBetweenZeroAndDuration() {
+        assertEquals(0L, MediaSessionPolicy.clampSeekPosition(-500L, 60_000L))
+        assertEquals(25_000L, MediaSessionPolicy.clampSeekPosition(25_000L, 60_000L))
+        assertEquals(60_000L, MediaSessionPolicy.clampSeekPosition(99_999L, 60_000L))
+        assertEquals(0L, MediaSessionPolicy.clampSeekPosition(10_000L, 0L))
+    }
+
+    @Test
+    fun mapPlaybackInfo_derivesProgressAndSeekCorrectly() {
+        val raw = RawPlaybackData(
+            title = "Midnight City",
+            artist = "M83",
+            isPlaying = true,
+            actionsBitmask = PlaybackActions.ACTION_PLAY_PAUSE or PlaybackActions.ACTION_SEEK_TO,
+            durationMillis = 243_000L,
+            positionMillis = 30_000L,
+            lastPositionUpdateTime = 123456L,
+            playbackSpeed = 1.0f
+        )
+        val info = MediaSessionPolicy.mapPlaybackInfo(raw)
+        assertNotNull(info)
+        assertEquals(243_000L, info!!.durationMillis)
+        assertEquals(30_000L, info.positionMillis)
+        assertEquals(123456L, info.lastPositionUpdateTime)
+        assertEquals(1.0f, info.playbackSpeed)
+        assertTrue(info.canSeek)
+        assertTrue(info.hasValidProgress)
+    }
+
+    @Test
+    fun mapPlaybackInfo_trackChangeResetsProgressToNewState() {
+        val track1 = RawPlaybackData(
+            title = "Track 1",
+            durationMillis = 180_000L,
+            positionMillis = 90_000L
+        )
+        val track2 = RawPlaybackData(
+            title = "Track 2",
+            durationMillis = 240_000L,
+            positionMillis = 0L
+        )
+        val info1 = MediaSessionPolicy.mapPlaybackInfo(track1)
+        val info2 = MediaSessionPolicy.mapPlaybackInfo(track2)
+
+        assertEquals(180_000L, info1!!.durationMillis)
+        assertEquals(90_000L, info1.positionMillis)
+
+        assertEquals(240_000L, info2!!.durationMillis)
+        assertEquals(0L, info2.positionMillis)
+    }
 }

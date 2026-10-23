@@ -21,6 +21,11 @@ data class MediaPlaybackInfo(
     val canPlayPause: Boolean = false,
     val canSkipPrevious: Boolean = false,
     val canSkipNext: Boolean = false,
+    val canSeek: Boolean = false,
+    val durationMillis: Long = 0L,
+    val positionMillis: Long = 0L,
+    val lastPositionUpdateTime: Long = 0L,
+    val playbackSpeed: Float = 1.0f,
     val packageName: String? = null
 ) {
     val displayTitle: String
@@ -28,6 +33,9 @@ data class MediaPlaybackInfo(
 
     val displayArtist: String
         get() = if (artist.isNullOrBlank()) "Unknown artist" else artist
+
+    val hasValidProgress: Boolean
+        get() = durationMillis > 0L && positionMillis >= 0L
 }
 
 /**

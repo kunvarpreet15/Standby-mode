@@ -44,6 +44,10 @@ data class RawPlaybackData(
     val albumArt: Bitmap? = null,
     val isPlaying: Boolean = false,
     val actionsBitmask: Long = 0L,
+    val durationMillis: Long = 0L,
+    val positionMillis: Long = -1L,
+    val lastPositionUpdateTime: Long = 0L,
+    val playbackSpeed: Float = 1.0f,
     val packageName: String? = null
 )
 
@@ -126,11 +130,72 @@ object MediaSessionPolicy {
     }
 
     /**
+     * Determines whether seeking is supported based on action bitmask, positive duration, and known position.
+     */
+    fun canSeek(actionsBitmask: Long, durationMillis: Long, positionMillis: Long): Boolean {
+        val advertisesSeek = (actionsBitmask and PlaybackActions.ACTION_SEEK_TO) != 0L
+        return advertisesSeek && durationMillis > 0L && positionMillis >= 0L
+    }
+
+    /**
+     * Clamps a requested seek target position between 0 and track duration.
+     */
+    fun clampSeekPosition(targetMillis: Long, durationMillis: Long): Long {
+        if (durationMillis <= 0L) return 0L
+        return targetMillis.coerceIn(0L, durationMillis)
+    }
+
+    /**
+     * Formats a duration in milliseconds to m:ss (e.g. 3:07, 42:18) or H:mm:ss if >= 1 hour.
+     */
+    fun formatDuration(millis: Long): String {
+        if (millis <= 0L) return "0:00"
+        val totalSeconds = millis / 1000L
+        val hours = totalSeconds / 3600L
+        val minutes = (totalSeconds % 3600L) / 60L
+        val seconds = totalSeconds % 60L
+        return if (hours > 0L) {
+            String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
+        }
+    }
+
+    /**
+     * Estimates current playback position based on last reported position, elapsed realtime,
+     * playback speed, and playing state. Does not advance while paused or in non-playing state.
+     */
+    fun estimateCurrentPosition(
+        positionMillis: Long,
+        lastPositionUpdateTime: Long,
+        playbackSpeed: Float,
+        isPlaying: Boolean,
+        durationMillis: Long,
+        currentElapsedRealtime: Long
+    ): Long {
+        if (positionMillis < 0L || durationMillis <= 0L) return 0L
+
+        val estimated = if (isPlaying && playbackSpeed > 0f && lastPositionUpdateTime > 0L) {
+            val elapsed = (currentElapsedRealtime - lastPositionUpdateTime).coerceAtLeast(0L)
+            positionMillis + (elapsed * playbackSpeed).toLong()
+        } else {
+            positionMillis
+        }
+
+        return estimated.coerceIn(0L, durationMillis)
+    }
+
+    /**
      * Maps raw playback data into immutable MediaPlaybackInfo.
      */
     fun mapPlaybackInfo(raw: RawPlaybackData?): MediaPlaybackInfo? {
         if (raw == null) return null
         val (canPlayPause, canSkipPrev, canSkipNext) = resolveActions(raw.isPlaying, raw.actionsBitmask)
+        val canSeek = canSeek(
+            actionsBitmask = raw.actionsBitmask,
+            durationMillis = raw.durationMillis,
+            positionMillis = raw.positionMillis
+        )
         return MediaPlaybackInfo(
             title = raw.title?.takeIf { it.isNotBlank() },
             artist = raw.artist?.takeIf { it.isNotBlank() },
@@ -139,6 +204,11 @@ object MediaSessionPolicy {
             canPlayPause = canPlayPause,
             canSkipPrevious = canSkipPrev,
             canSkipNext = canSkipNext,
+            canSeek = canSeek,
+            durationMillis = raw.durationMillis,
+            positionMillis = raw.positionMillis,
+            lastPositionUpdateTime = raw.lastPositionUpdateTime,
+            playbackSpeed = raw.playbackSpeed,
             packageName = raw.packageName
         )
     }
@@ -178,12 +248,21 @@ object MediaSessionPolicy {
             val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
             val actions = playbackState?.actions ?: 0L
 
+            val duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+            val position = playbackState?.position ?: PlaybackState.PLAYBACK_POSITION_UNKNOWN
+            val lastPositionUpdateTime = playbackState?.lastPositionUpdateTime ?: 0L
+            val playbackSpeed = playbackState?.playbackSpeed ?: 1.0f
+
             RawPlaybackData(
                 title = title,
                 artist = artist,
                 albumArt = albumArt,
                 isPlaying = isPlaying,
                 actionsBitmask = actions,
+                durationMillis = duration,
+                positionMillis = position,
+                lastPositionUpdateTime = lastPositionUpdateTime,
+                playbackSpeed = playbackSpeed,
                 packageName = controller.packageName
             )
         } catch (_: Exception) {
