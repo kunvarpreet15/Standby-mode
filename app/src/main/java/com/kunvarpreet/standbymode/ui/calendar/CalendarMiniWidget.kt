@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -48,7 +49,6 @@ import com.kunvarpreet.standbymode.ui.theme.StandBySurfaceCard
 import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
 import java.time.ZoneId
-import java.util.Locale
 
 /**
  * Compact ambient Calendar & Agenda widget for Duo Layout widget stacks.
@@ -314,7 +314,7 @@ private fun UpcomingEventSection(
                 event = nextEvent,
                 nowMillis = nowMillis,
                 is24Hour = is24Hour,
-                locale = Locale.getDefault(),
+                locale = LocalLocale.current.platformLocale,
                 zoneId = ZoneId.systemDefault()
             )
 

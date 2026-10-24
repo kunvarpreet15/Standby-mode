@@ -32,7 +32,7 @@ object CalendarLogic {
         val weekdayLabels = (0..6).map { dayOffset ->
             val dow = firstDayOfWeek.plus(dayOffset.toLong())
             val label = dow.getDisplayName(TextStyle.NARROW, locale)
-            if (label.isBlank()) dow.getDisplayName(TextStyle.SHORT, locale).take(1) else label
+            label.ifBlank { dow.getDisplayName(TextStyle.SHORT, locale).take(1) }
         }
 
         val monthLabel = "${yearMonth.month.getDisplayName(TextStyle.FULL, locale).uppercase(locale)} ${yearMonth.year}"
