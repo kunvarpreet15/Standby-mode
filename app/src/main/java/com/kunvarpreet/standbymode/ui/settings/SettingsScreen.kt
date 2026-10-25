@@ -88,6 +88,7 @@ fun SettingsScreen(
     onShowBatteryStatusChanged: (Boolean) -> Unit = {},
     onShowMediaPlayerChanged: (Boolean) -> Unit = {},
     onShowCalendarAgendaChanged: (Boolean) -> Unit = {},
+    onShowWeatherWidgetChanged: (Boolean) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -99,6 +100,9 @@ fun SettingsScreen(
 
     var showCalendarPermissionExplanationDialog by remember { mutableStateOf(false) }
     var showCalendarPermissionDeniedFeedback by remember { mutableStateOf(false) }
+
+    var showWeatherPermissionExplanationDialog by remember { mutableStateOf(false) }
+    var showWeatherPermissionDeniedFeedback by remember { mutableStateOf(false) }
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -125,6 +129,34 @@ fun SettingsScreen(
             }
         } else {
             onShowCalendarAgendaChanged(false)
+        }
+    }
+
+    val weatherPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            onShowWeatherWidgetChanged(true)
+        } else {
+            onShowWeatherWidgetChanged(false)
+            showWeatherPermissionDeniedFeedback = true
+        }
+    }
+
+    val onToggleWeatherWidget: (Boolean) -> Unit = { shouldEnable ->
+        if (shouldEnable) {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasPermission) {
+                onShowWeatherWidgetChanged(true)
+            } else {
+                showWeatherPermissionExplanationDialog = true
+            }
+        } else {
+            onShowWeatherWidgetChanged(false)
         }
     }
 
@@ -442,6 +474,88 @@ fun SettingsScreen(
         )
     }
 
+    if (showWeatherPermissionExplanationDialog) {
+        AlertDialog(
+            onDismissRequest = { showWeatherPermissionExplanationDialog = false },
+            title = {
+                Text(
+                    text = "Location Access Required",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "The weather widget displays local weather and requires approximate location access and an internet connection.\n\nPrivacy Notice: StandBy Mode only accesses your approximate location while the app is actively in use to retrieve your local forecast. Precise or background location tracking is never requested or performed.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showWeatherPermissionExplanationDialog = false
+                        weatherPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    }
+                ) {
+                    Text(
+                        text = "Continue",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWeatherPermissionExplanationDialog = false }) {
+                    Text(
+                        text = "Cancel",
+                        color = StandByTextMuted,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (showWeatherPermissionDeniedFeedback) {
+        AlertDialog(
+            onDismissRequest = { showWeatherPermissionDeniedFeedback = false },
+            title = {
+                Text(
+                    text = "Location Access Not Granted",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "Approximate location permission was not granted. The Weather widget remains disabled until permission is granted.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showWeatherPermissionDeniedFeedback = false }) {
+                    Text(
+                        text = "OK",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -512,7 +626,8 @@ fun SettingsScreen(
                                 onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                                 onShowBatteryStatusChanged = onShowBatteryStatusChanged,
                                 onToggleMediaPlayer = onToggleMediaPlayer,
-                                onToggleCalendarAgenda = onToggleCalendarAgenda
+                                onToggleCalendarAgenda = onToggleCalendarAgenda,
+                                onToggleWeatherWidget = onToggleWeatherWidget
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -550,7 +665,8 @@ fun SettingsScreen(
                             onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                             onShowBatteryStatusChanged = onShowBatteryStatusChanged,
                             onToggleMediaPlayer = onToggleMediaPlayer,
-                            onToggleCalendarAgenda = onToggleCalendarAgenda
+                            onToggleCalendarAgenda = onToggleCalendarAgenda,
+                            onToggleWeatherWidget = onToggleWeatherWidget
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -624,7 +740,8 @@ private fun SettingsContent(
     onKeepScreenAwakeChanged: (Boolean) -> Unit,
     onShowBatteryStatusChanged: (Boolean) -> Unit,
     onToggleMediaPlayer: (Boolean) -> Unit,
-    onToggleCalendarAgenda: (Boolean) -> Unit
+    onToggleCalendarAgenda: (Boolean) -> Unit,
+    onToggleWeatherWidget: (Boolean) -> Unit = {}
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -763,7 +880,18 @@ private fun SettingsContent(
         )
     }
 
-    // 7. Charging Awareness
+    // 7. Weather & Forecast
+    SettingsSection(title = "Weather & Forecast") {
+        SettingsToggleRow(
+            title = "Show weather",
+            subtitle = "Display local weather and forecast using approximate location and internet",
+            checked = preferences.showWeatherWidget,
+            onCheckedChange = onToggleWeatherWidget,
+            accentColor = accentColor
+        )
+    }
+
+    // 8. Charging Awareness
     SettingsSection(title = "Charging Awareness") {
         SettingsToggleRow(
             title = "Show notification when charging",

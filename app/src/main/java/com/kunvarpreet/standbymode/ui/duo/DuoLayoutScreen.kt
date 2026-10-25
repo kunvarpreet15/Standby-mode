@@ -36,6 +36,7 @@ import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.FormattedTime
+import com.kunvarpreet.standbymode.core.weather.WeatherUiState
 import com.kunvarpreet.standbymode.core.widget.DuoWidgetPolicy
 import com.kunvarpreet.standbymode.core.widget.DuoWidgetType
 import com.kunvarpreet.standbymode.ui.battery.BatteryWidgetView
@@ -53,11 +54,12 @@ import com.kunvarpreet.standbymode.ui.theme.StandByNightTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandBySurfaceCard
 import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
+import com.kunvarpreet.standbymode.ui.weather.WeatherMiniWidget
 
 /**
  * Duo Layout Screen displaying two independently navigable vertical widget stacks:
- * - Left Pane Stack: Supports Clock, Calendar, Battery, and Media widgets (default: Clock).
- * - Right Pane Stack: Supports Media, Calendar, Battery, and Clock widgets (default: Media if enabled, else Battery).
+ * - Left Pane Stack: Supports Clock, Calendar, Weather, Battery, and Media widgets (default: Clock).
+ * - Right Pane Stack: Supports Media, Calendar, Weather, Battery, and Clock widgets (default: Media if enabled, else Battery).
  *
  * Automatically adapts between side-by-side landscape layout and stacked vertical portrait fallback.
  */
@@ -69,6 +71,7 @@ fun DuoLayoutScreen(
     batteryState: BatteryState,
     mediaWidgetUiState: MediaWidgetUiState,
     calendarUiState: CalendarAgendaUiState = CalendarAgendaUiState.Loading,
+    weatherUiState: WeatherUiState = WeatherUiState.Loading,
     leftPaneWidget: DuoWidgetType = DuoWidgetType.CLOCK,
     rightPaneWidget: DuoWidgetType = if (preferences.showMediaPlayer) DuoWidgetType.MEDIA else DuoWidgetType.BATTERY_STATUS,
     onLeftPaneWidgetChanged: (DuoWidgetType) -> Unit = {},
@@ -80,6 +83,8 @@ fun DuoLayoutScreen(
     onOpenMediaPermissionSettings: () -> Unit,
     onOpenCalendarPermissionSettings: () -> Unit = {},
     onCalendarRetry: () -> Unit = {},
+    onOpenWeatherPermissionSettings: () -> Unit = {},
+    onWeatherRetry: () -> Unit = {},
     onOpenSettings: () -> Unit
 ) {
     val palette = ClockThemePalette.resolve(
@@ -90,12 +95,14 @@ fun DuoLayoutScreen(
     val availableLeftWidgets = DuoWidgetPolicy.getAvailableWidgets(
         isLeftPane = true,
         showMediaPlayer = preferences.showMediaPlayer,
-        showCalendarAgenda = preferences.showCalendarAgenda
+        showCalendarAgenda = preferences.showCalendarAgenda,
+        showWeatherWidget = preferences.showWeatherWidget
     )
     val availableRightWidgets = DuoWidgetPolicy.getAvailableWidgets(
         isLeftPane = false,
         showMediaPlayer = preferences.showMediaPlayer,
-        showCalendarAgenda = preferences.showCalendarAgenda
+        showCalendarAgenda = preferences.showCalendarAgenda,
+        showWeatherWidget = preferences.showWeatherWidget
     )
 
     BoxWithConstraints(
@@ -146,6 +153,7 @@ fun DuoLayoutScreen(
                             palette = palette,
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
+                            weatherUiState = weatherUiState,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -153,6 +161,8 @@ fun DuoLayoutScreen(
                             onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
                             onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
                             onCalendarRetry = onCalendarRetry,
+                            onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
+                            onWeatherRetry = onWeatherRetry,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -192,6 +202,7 @@ fun DuoLayoutScreen(
                             palette = palette,
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
+                            weatherUiState = weatherUiState,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -199,6 +210,8 @@ fun DuoLayoutScreen(
                             onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
                             onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
                             onCalendarRetry = onCalendarRetry,
+                            onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
+                            onWeatherRetry = onWeatherRetry,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -239,6 +252,7 @@ fun DuoLayoutScreen(
                             palette = palette,
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
+                            weatherUiState = weatherUiState,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -246,6 +260,8 @@ fun DuoLayoutScreen(
                             onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
                             onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
                             onCalendarRetry = onCalendarRetry,
+                            onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
+                            onWeatherRetry = onWeatherRetry,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -285,6 +301,7 @@ fun DuoLayoutScreen(
                             palette = palette,
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
+                            weatherUiState = weatherUiState,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -292,6 +309,8 @@ fun DuoLayoutScreen(
                             onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
                             onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
                             onCalendarRetry = onCalendarRetry,
+                            onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
+                            onWeatherRetry = onWeatherRetry,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -314,6 +333,7 @@ fun DuoWidgetRenderer(
     palette: ClockThemePalette,
     mediaWidgetUiState: MediaWidgetUiState,
     calendarUiState: CalendarAgendaUiState = CalendarAgendaUiState.Loading,
+    weatherUiState: WeatherUiState = WeatherUiState.Loading,
     onMediaPlayPause: () -> Unit,
     onMediaPrevious: () -> Unit,
     onMediaNext: () -> Unit,
@@ -321,6 +341,8 @@ fun DuoWidgetRenderer(
     onOpenMediaPermissionSettings: () -> Unit,
     onOpenCalendarPermissionSettings: () -> Unit = {},
     onCalendarRetry: () -> Unit = {},
+    onOpenWeatherPermissionSettings: () -> Unit = {},
+    onWeatherRetry: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -364,6 +386,16 @@ fun DuoWidgetRenderer(
                 is24Hour = preferences.is24Hour,
                 onOpenPermissionSettings = onOpenCalendarPermissionSettings,
                 onRetry = onCalendarRetry,
+                modifier = modifier
+            )
+        }
+        DuoWidgetType.WEATHER -> {
+            WeatherMiniWidget(
+                uiState = weatherUiState,
+                accentColor = palette.accentColor,
+                isNightMode = preferences.isNightModeEnabled,
+                onOpenPermissionSettings = onOpenWeatherPermissionSettings,
+                onRetry = onWeatherRetry,
                 modifier = modifier
             )
         }

@@ -16,12 +16,14 @@ object DuoWidgetPolicy {
     fun getAvailableWidgets(
         isLeftPane: Boolean,
         showMediaPlayer: Boolean,
-        showCalendarAgenda: Boolean = false
+        showCalendarAgenda: Boolean = false,
+        showWeatherWidget: Boolean = false
     ): List<DuoWidgetType> {
         return if (isLeftPane) {
             buildList {
                 add(DuoWidgetType.CLOCK)
                 if (showCalendarAgenda) add(DuoWidgetType.CALENDAR)
+                if (showWeatherWidget) add(DuoWidgetType.WEATHER)
                 add(DuoWidgetType.BATTERY_STATUS)
                 if (showMediaPlayer) add(DuoWidgetType.MEDIA)
             }
@@ -30,11 +32,13 @@ object DuoWidgetPolicy {
                 if (showMediaPlayer) {
                     add(DuoWidgetType.MEDIA)
                     if (showCalendarAgenda) add(DuoWidgetType.CALENDAR)
+                    if (showWeatherWidget) add(DuoWidgetType.WEATHER)
                     add(DuoWidgetType.BATTERY_STATUS)
                     add(DuoWidgetType.CLOCK)
                 } else {
                     add(DuoWidgetType.BATTERY_STATUS)
                     if (showCalendarAgenda) add(DuoWidgetType.CALENDAR)
+                    if (showWeatherWidget) add(DuoWidgetType.WEATHER)
                     add(DuoWidgetType.CLOCK)
                 }
             }
@@ -47,7 +51,8 @@ object DuoWidgetPolicy {
     fun getDefaultWidget(
         isLeftPane: Boolean,
         showMediaPlayer: Boolean,
-        showCalendarAgenda: Boolean = false
+        showCalendarAgenda: Boolean = false,
+        showWeatherWidget: Boolean = false
     ): DuoWidgetType {
         return if (isLeftPane) {
             DuoWidgetType.CLOCK
@@ -135,6 +140,26 @@ object DuoWidgetPolicy {
         }
         return displaySpace == DisplaySpace.DUO_LAYOUT && (
             leftPaneWidget == DuoWidgetType.CALENDAR || rightPaneWidget == DuoWidgetType.CALENDAR
+        )
+    }
+
+    /**
+     * Evaluates whether the Weather & Forecast widget is actively visible on the user's screen.
+     * Location and forecast queries are active only when this returns true.
+     */
+    fun isWeatherVisible(
+        isPreferenceEnabled: Boolean,
+        currentScreen: AppScreen,
+        isActivityForeground: Boolean,
+        displaySpace: DisplaySpace,
+        leftPaneWidget: DuoWidgetType,
+        rightPaneWidget: DuoWidgetType
+    ): Boolean {
+        if (!isPreferenceEnabled || currentScreen != AppScreen.CLOCK || !isActivityForeground) {
+            return false
+        }
+        return displaySpace == DisplaySpace.DUO_LAYOUT && (
+            leftPaneWidget == DuoWidgetType.WEATHER || rightPaneWidget == DuoWidgetType.WEATHER
         )
     }
 }

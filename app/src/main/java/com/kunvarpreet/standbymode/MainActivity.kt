@@ -62,6 +62,8 @@ import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
 import com.kunvarpreet.standbymode.core.preferences.UserClockPreferences
 import com.kunvarpreet.standbymode.core.time.rememberLiveTime
+import com.kunvarpreet.standbymode.core.weather.WeatherRepository
+import com.kunvarpreet.standbymode.core.weather.WeatherUiState
 import com.kunvarpreet.standbymode.core.widget.DuoWidgetPolicy
 import com.kunvarpreet.standbymode.core.widget.DuoWidgetType
 import com.kunvarpreet.standbymode.ui.clock.AnalogClockDialView
@@ -157,6 +159,10 @@ fun StandByAppShell(
         CalendarRepository(context.applicationContext)
     }
 
+    val weatherRepository = remember(context) {
+        WeatherRepository(context.applicationContext)
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     var isActivityForeground by remember {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
@@ -169,6 +175,9 @@ fun StandByAppShell(
                     isActivityForeground = true
                     mediaSessionRepository.refreshAccess()
                     calendarRepository.refresh()
+                    if (weatherRepository.hasLocationPermission() && preferences.showWeatherWidget) {
+                        weatherRepository.refresh()
+                    }
                 }
                 Lifecycle.Event.ON_PAUSE,
                 Lifecycle.Event.ON_STOP,
@@ -212,30 +221,34 @@ fun StandByAppShell(
         DuoWidgetPolicy.getDefaultWidget(
             isLeftPane = true,
             showMediaPlayer = preferences.showMediaPlayer,
-            showCalendarAgenda = preferences.showCalendarAgenda
+            showCalendarAgenda = preferences.showCalendarAgenda,
+            showWeatherWidget = preferences.showWeatherWidget
         )
     }
     val defaultRight = remember {
         DuoWidgetPolicy.getDefaultWidget(
             isLeftPane = false,
             showMediaPlayer = preferences.showMediaPlayer,
-            showCalendarAgenda = preferences.showCalendarAgenda
+            showCalendarAgenda = preferences.showCalendarAgenda,
+            showWeatherWidget = preferences.showWeatherWidget
         )
     }
 
     var leftPaneWidget by rememberSaveable { mutableStateOf(defaultLeft) }
     var rightPaneWidget by rememberSaveable { mutableStateOf(defaultRight) }
 
-    // Reconcile selections if preferences change (e.g. Media or Calendar toggled in Settings)
+    // Reconcile selections if preferences change (e.g. Media, Calendar, or Weather toggled in Settings)
     val availableLeft = DuoWidgetPolicy.getAvailableWidgets(
         isLeftPane = true,
         showMediaPlayer = preferences.showMediaPlayer,
-        showCalendarAgenda = preferences.showCalendarAgenda
+        showCalendarAgenda = preferences.showCalendarAgenda,
+        showWeatherWidget = preferences.showWeatherWidget
     )
     val availableRight = DuoWidgetPolicy.getAvailableWidgets(
         isLeftPane = false,
         showMediaPlayer = preferences.showMediaPlayer,
-        showCalendarAgenda = preferences.showCalendarAgenda
+        showCalendarAgenda = preferences.showCalendarAgenda,
+        showWeatherWidget = preferences.showWeatherWidget
     )
 
     val reconciledLeft = DuoWidgetPolicy.resolveValidSelection(leftPaneWidget, availableLeft, defaultLeft)
@@ -315,6 +328,28 @@ fun StandByAppShell(
 
     val calendarUiState by calendarRepository.uiState.collectAsState()
 
+    val shouldObserveWeather = DuoWidgetPolicy.isWeatherVisible(
+        isPreferenceEnabled = preferences.showWeatherWidget,
+        currentScreen = currentScreen,
+        isActivityForeground = isActivityForeground,
+        displaySpace = currentDisplaySpace,
+        leftPaneWidget = leftPaneWidget,
+        rightPaneWidget = rightPaneWidget
+    )
+
+    DisposableEffect(shouldObserveWeather, weatherRepository) {
+        if (shouldObserveWeather) {
+            weatherRepository.startObserving()
+        } else {
+            weatherRepository.stopObserving()
+        }
+        onDispose {
+            weatherRepository.stopObserving()
+        }
+    }
+
+    val weatherUiState by weatherRepository.uiState.collectAsState()
+
     val openMediaSettings = remember(context) {
         {
             val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
@@ -348,6 +383,21 @@ fun StandByAppShell(
         }
     }
 
+    val openWeatherSettings = remember(context) {
+        {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            try {
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                try {
+                    context.startActivity(Intent(Settings.ACTION_SETTINGS))
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     when (currentScreen) {
         AppScreen.CLOCK -> {
             FullscreenClockScreen(
@@ -356,6 +406,7 @@ fun StandByAppShell(
                 batteryState = batteryState,
                 mediaWidgetUiState = mediaWidgetUiState,
                 calendarUiState = calendarUiState,
+                weatherUiState = weatherUiState,
                 pagerState = pagerState,
                 leftPaneWidget = leftPaneWidget,
                 rightPaneWidget = rightPaneWidget,
@@ -368,6 +419,8 @@ fun StandByAppShell(
                 onOpenMediaPermissionSettings = openMediaSettings,
                 onOpenCalendarPermissionSettings = openCalendarSettings,
                 onCalendarRetry = { calendarRepository.refresh() },
+                onOpenWeatherPermissionSettings = openWeatherSettings,
+                onWeatherRetry = { weatherRepository.refresh() },
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 modifier = modifier
             )
@@ -415,6 +468,9 @@ fun StandByAppShell(
                 onShowCalendarAgendaChanged = { showCalendar ->
                     coroutineScope.launch { repository.updateShowCalendarAgenda(showCalendar) }
                 },
+                onShowWeatherWidgetChanged = { showWeather ->
+                    coroutineScope.launch { repository.updateShowWeatherWidget(showWeather) }
+                },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
             )
@@ -433,6 +489,7 @@ fun FullscreenClockScreen(
     batteryState: BatteryState = BatteryState(),
     mediaWidgetUiState: MediaWidgetUiState = MediaWidgetUiState.NoActiveMedia,
     calendarUiState: CalendarAgendaUiState = CalendarAgendaUiState.Loading,
+    weatherUiState: WeatherUiState = WeatherUiState.Loading,
     pagerState: PagerState = rememberPagerState(initialPage = DisplaySpace.DEFAULT_PAGE_INDEX) {
         DisplaySpace.entries.size
     },
@@ -447,6 +504,8 @@ fun FullscreenClockScreen(
     onOpenMediaPermissionSettings: () -> Unit = {},
     onOpenCalendarPermissionSettings: () -> Unit = {},
     onCalendarRetry: () -> Unit = {},
+    onOpenWeatherPermissionSettings: () -> Unit = {},
+    onWeatherRetry: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -508,6 +567,7 @@ fun FullscreenClockScreen(
                             batteryState = batteryState,
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
+                            weatherUiState = weatherUiState,
                             leftPaneWidget = leftPaneWidget,
                             rightPaneWidget = rightPaneWidget,
                             onLeftPaneWidgetChanged = onLeftPaneWidgetChanged,
@@ -519,6 +579,8 @@ fun FullscreenClockScreen(
                             onOpenMediaPermissionSettings = onOpenMediaPermissionSettings,
                             onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
                             onCalendarRetry = onCalendarRetry,
+                            onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
+                            onWeatherRetry = onWeatherRetry,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )

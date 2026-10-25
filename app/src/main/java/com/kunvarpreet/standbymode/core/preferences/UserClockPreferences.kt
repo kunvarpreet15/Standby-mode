@@ -102,5 +102,6 @@ data class UserClockPreferences(
     val keepScreenAwake: Boolean = true,
     val showBatteryStatus: Boolean = false,
     val showMediaPlayer: Boolean = false,
-    val showCalendarAgenda: Boolean = false
+    val showCalendarAgenda: Boolean = false,
+    val showWeatherWidget: Boolean = false
 )

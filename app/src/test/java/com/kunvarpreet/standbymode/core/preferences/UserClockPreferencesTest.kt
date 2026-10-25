@@ -27,6 +27,56 @@ class UserClockPreferencesTest {
         assertEquals(false, prefs.showBatteryStatus)
         assertEquals(false, prefs.showMediaPlayer)
         assertEquals(false, prefs.showCalendarAgenda)
+        assertEquals(false, prefs.showWeatherWidget)
+    }
+
+    @Test
+    fun showWeatherWidget_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences(
+            clockFace = ClockFaceType.ANALOG,
+            is24Hour = true,
+            showSeconds = true,
+            showDate = false,
+            accentColor = AccentColorOption.PURPLE,
+            isNightModeEnabled = true,
+            showChargingNotification = true,
+            isBurnInProtectionEnabled = false,
+            keepScreenAwake = true,
+            showBatteryStatus = true,
+            showMediaPlayer = true,
+            showCalendarAgenda = true,
+            showWeatherWidget = false
+        )
+        val toggled = initial.copy(showWeatherWidget = true)
+
+        assertEquals(true, toggled.showWeatherWidget)
+        assertEquals(ClockFaceType.ANALOG, toggled.clockFace)
+        assertEquals(true, toggled.is24Hour)
+        assertEquals(true, toggled.showSeconds)
+        assertEquals(false, toggled.showDate)
+        assertEquals(AccentColorOption.PURPLE, toggled.accentColor)
+        assertEquals(true, toggled.isNightModeEnabled)
+        assertEquals(true, toggled.showChargingNotification)
+        assertEquals(false, toggled.isBurnInProtectionEnabled)
+        assertEquals(true, toggled.keepScreenAwake)
+        assertEquals(true, toggled.showBatteryStatus)
+        assertEquals(true, toggled.showMediaPlayer)
+        assertEquals(true, toggled.showCalendarAgenda)
+    }
+
+    @Test
+    fun showWeatherWidget_remainsCompletelyIndependentOfOtherFeatures() {
+        val initial = UserClockPreferences()
+
+        val weatherEnabled = initial.copy(showWeatherWidget = true)
+        assertEquals(true, weatherEnabled.showWeatherWidget)
+        assertEquals(false, weatherEnabled.showCalendarAgenda)
+        assertEquals(false, weatherEnabled.showMediaPlayer)
+        assertEquals(false, weatherEnabled.showBatteryStatus)
+        assertEquals(false, weatherEnabled.showChargingNotification)
+        assertEquals(false, weatherEnabled.isNightModeEnabled)
+        assertEquals(true, weatherEnabled.keepScreenAwake)
+        assertEquals(true, weatherEnabled.isBurnInProtectionEnabled)
     }
 
     @Test

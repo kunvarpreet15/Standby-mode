@@ -27,6 +27,11 @@ enum class DuoWidgetType(
         id = "calendar",
         displayName = "Calendar",
         accessibilityName = "Calendar and agenda widget"
+    ),
+    WEATHER(
+        id = "weather",
+        displayName = "Weather",
+        accessibilityName = "Weather and forecast widget"
     );
 
     companion object {

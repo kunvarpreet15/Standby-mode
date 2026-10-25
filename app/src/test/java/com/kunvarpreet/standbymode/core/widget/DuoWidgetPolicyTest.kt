@@ -474,4 +474,177 @@ class DuoWidgetPolicyTest {
             )
         )
     }
+
+    @Test
+    fun defaultEntries_forBothPanes_whenWeatherEnabled() {
+        val leftAvailable = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = false,
+            showCalendarAgenda = false,
+            showWeatherWidget = true
+        )
+        val rightAvailable = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = false,
+            showMediaPlayer = false,
+            showCalendarAgenda = false,
+            showWeatherWidget = true
+        )
+
+        assertEquals(3, leftAvailable.size)
+        assertEquals(listOf(DuoWidgetType.CLOCK, DuoWidgetType.WEATHER, DuoWidgetType.BATTERY_STATUS), leftAvailable)
+
+        assertEquals(3, rightAvailable.size)
+        assertEquals(listOf(DuoWidgetType.BATTERY_STATUS, DuoWidgetType.WEATHER, DuoWidgetType.CLOCK), rightAvailable)
+    }
+
+    @Test
+    fun defaultEntries_forBothPanes_whenAllWidgetsEnabled() {
+        val leftAvailable = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = true,
+            showCalendarAgenda = true,
+            showWeatherWidget = true
+        )
+        val rightAvailable = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = false,
+            showMediaPlayer = true,
+            showCalendarAgenda = true,
+            showWeatherWidget = true
+        )
+
+        assertEquals(5, leftAvailable.size)
+        assertEquals(listOf(DuoWidgetType.CLOCK, DuoWidgetType.CALENDAR, DuoWidgetType.WEATHER, DuoWidgetType.BATTERY_STATUS, DuoWidgetType.MEDIA), leftAvailable)
+
+        assertEquals(5, rightAvailable.size)
+        assertEquals(listOf(DuoWidgetType.MEDIA, DuoWidgetType.CALENDAR, DuoWidgetType.WEATHER, DuoWidgetType.BATTERY_STATUS, DuoWidgetType.CLOCK), rightAvailable)
+    }
+
+    @Test
+    fun removalOfWeather_whenShowWeatherWidgetBecomesFalse() {
+        val availableWithWeather = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = false,
+            showCalendarAgenda = false,
+            showWeatherWidget = true
+        )
+        assertTrue(availableWithWeather.contains(DuoWidgetType.WEATHER))
+
+        val availableWithoutWeather = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = false,
+            showCalendarAgenda = false,
+            showWeatherWidget = false
+        )
+        assertFalse(availableWithoutWeather.contains(DuoWidgetType.WEATHER))
+    }
+
+    @Test
+    fun safeFallback_whenWeatherBecomesUnavailable() {
+        val availableNoWeather = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = false,
+            showCalendarAgenda = false,
+            showWeatherWidget = false
+        )
+        val defaultLeft = DuoWidgetPolicy.getDefaultWidget(
+            isLeftPane = true,
+            showMediaPlayer = false,
+            showCalendarAgenda = false,
+            showWeatherWidget = false
+        )
+
+        val resolved = DuoWidgetPolicy.resolveValidSelection(
+            current = DuoWidgetType.WEATHER,
+            available = availableNoWeather,
+            default = defaultLeft
+        )
+        assertEquals(DuoWidgetType.CLOCK, resolved)
+    }
+
+    @Test
+    fun isWeatherVisible_policyValidation() {
+        // 1. Preference disabled -> false
+        assertFalse(
+            DuoWidgetPolicy.isWeatherVisible(
+                isPreferenceEnabled = false,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.WEATHER,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+
+        // 2. Activity in background -> false
+        assertFalse(
+            DuoWidgetPolicy.isWeatherVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = false,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.WEATHER,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+
+        // 3. User in Settings -> false
+        assertFalse(
+            DuoWidgetPolicy.isWeatherVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.SETTINGS,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.WEATHER,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+
+        // 4. In Fullscreen Clock -> false (Weather is only in Duo Layout stacks)
+        assertFalse(
+            DuoWidgetPolicy.isWeatherVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.FULLSCREEN_CLOCK,
+                leftPaneWidget = DuoWidgetType.WEATHER,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+
+        // 5. In Duo Layout: true if left pane displays WEATHER
+        assertTrue(
+            DuoWidgetPolicy.isWeatherVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.WEATHER,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+
+        // 6. In Duo Layout: true if right pane displays WEATHER
+        assertTrue(
+            DuoWidgetPolicy.isWeatherVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.WEATHER
+            )
+        )
+
+        // 7. In Duo Layout: false if neither pane displays WEATHER
+        assertFalse(
+            DuoWidgetPolicy.isWeatherVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+    }
 }
