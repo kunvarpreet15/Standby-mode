@@ -2,11 +2,11 @@ package com.kunvarpreet.standbymode.core.photoframe
 
 import android.content.ContentResolver
 import android.graphics.ImageDecoder
-import android.net.Uri
 import android.util.Log
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -50,7 +50,7 @@ object AsyncPhotoLoader {
         }
 
         runCatching {
-            val uri = Uri.parse(uriString)
+            val uri = uriString.toUri()
             val source = ImageDecoder.createSource(contentResolver, uri)
             val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE

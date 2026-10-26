@@ -253,12 +253,12 @@ fun SettingsToggleRow(
  */
 @Composable
 fun PhotoFrameSettingsControls(
+    modifier: Modifier = Modifier,
     photoCount: Int,
     accentColor: Color,
     onChoosePhotos: () -> Unit,
     onRemoveAllPhotos: () -> Unit,
-    onOpenFullscreen: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onOpenFullscreen: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),

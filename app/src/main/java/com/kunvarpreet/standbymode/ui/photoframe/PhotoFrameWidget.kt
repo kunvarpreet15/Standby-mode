@@ -67,13 +67,13 @@ import kotlinx.coroutines.isActive
  */
 @Composable
 fun PhotoFrameWidget(
+    modifier: Modifier = Modifier,
     photoUris: List<String>,
     isSlideshowActive: Boolean,
     isNightMode: Boolean,
     accentColor: Color,
     onChoosePhotos: () -> Unit,
-    onOpenFullscreen: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onOpenFullscreen: (() -> Unit)? = null
 ) {
     if (photoUris.isEmpty()) {
         PhotoFrameEmptyState(

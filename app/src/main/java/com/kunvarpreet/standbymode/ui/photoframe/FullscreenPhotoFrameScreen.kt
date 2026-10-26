@@ -54,6 +54,7 @@ import kotlinx.coroutines.isActive
  */
 @Composable
 fun FullscreenPhotoFrameScreen(
+    modifier: Modifier = Modifier,
     photoUris: List<String>,
     isSlideshowActive: Boolean,
     isNightMode: Boolean,
@@ -61,8 +62,7 @@ fun FullscreenPhotoFrameScreen(
     formattedTime: FormattedTime,
     showDate: Boolean = true,
     onBack: () -> Unit,
-    onChoosePhotos: () -> Unit,
-    modifier: Modifier = Modifier
+    onChoosePhotos: () -> Unit
 ) {
     // Intercept hardware and gesture back navigation
     BackHandler(onBack = onBack)

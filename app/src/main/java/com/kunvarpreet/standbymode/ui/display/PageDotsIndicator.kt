@@ -34,12 +34,12 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
  */
 @Composable
 fun PageDotsIndicator(
+    modifier: Modifier = Modifier,
     pageCount: Int,
     currentPage: Int,
     accentColor: Color,
     isNightMode: Boolean,
-    onPageSelected: ((Int) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onPageSelected: ((Int) -> Unit)? = null
 ) {
     val activeColor = if (isNightMode) StandByNightText else accentColor
     val inactiveColor = if (isNightMode) {

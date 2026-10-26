@@ -343,6 +343,7 @@ fun DuoLayoutScreen(
  */
 @Composable
 fun DuoWidgetRenderer(
+    modifier: Modifier = Modifier,
     widgetType: DuoWidgetType,
     preferences: UserClockPreferences,
     formattedTime: FormattedTime,
@@ -363,8 +364,7 @@ fun DuoWidgetRenderer(
     isSlideshowActive: Boolean = false,
     onLaunchPhotoPicker: () -> Unit = {},
     onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
-    onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    onOpenSettings: () -> Unit
 ) {
     when (widgetType) {
         DuoWidgetType.CLOCK -> {

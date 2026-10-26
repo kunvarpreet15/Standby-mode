@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -416,7 +417,7 @@ fun StandByAppShell(
             maxItems = PhotoFrameLogic.MAX_PHOTO_COUNT
         )
     ) { uris ->
-        if (!uris.isNullOrEmpty()) {
+        if (uris.isNotEmpty()) {
             val sanitized = PhotoFrameLogic.sanitizeUriList(
                 uris.map { it.toString() },
                 PhotoFrameLogic.MAX_PHOTO_COUNT
@@ -424,7 +425,7 @@ fun StandByAppShell(
             val contentResolver = context.contentResolver
             for (uriString in sanitized) {
                 try {
-                    val uri = Uri.parse(uriString)
+                    val uri = uriString.toUri()
                     contentResolver.takePersistableUriPermission(
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -437,7 +438,7 @@ fun StandByAppShell(
             val orphanedUris = PhotoFrameLogic.findOrphanedUris(previousUris, sanitized)
             for (oldUriString in orphanedUris) {
                 try {
-                    val uri = Uri.parse(oldUriString)
+                    val uri = oldUriString.toUri()
                     contentResolver.releasePersistableUriPermission(
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -470,7 +471,7 @@ fun StandByAppShell(
             val contentResolver = context.contentResolver
             for (uriString in previousUris) {
                 try {
-                    val uri = Uri.parse(uriString)
+                    val uri = uriString.toUri()
                     contentResolver.releasePersistableUriPermission(
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -607,6 +608,7 @@ fun StandByAppShell(
  */
 @Composable
 fun FullscreenClockScreen(
+    modifier: Modifier = Modifier,
     preferences: UserClockPreferences,
     formattedTime: com.kunvarpreet.standbymode.core.time.FormattedTime,
     batteryState: BatteryState = BatteryState(),
@@ -632,8 +634,7 @@ fun FullscreenClockScreen(
     onWeatherRetry: () -> Unit = {},
     onLaunchPhotoPicker: () -> Unit = {},
     onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
-    onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    onOpenSettings: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     val palette = ClockThemePalette.resolve(
