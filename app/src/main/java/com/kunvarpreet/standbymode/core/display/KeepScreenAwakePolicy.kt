@@ -6,7 +6,7 @@ import com.kunvarpreet.standbymode.AppScreen
    should be active.
    Requirements:
    1. The user preference is enabled.
-   2. The active screen is the main clock screen (AppScreen.CLOCK).
+   2. The active screen is an ambient display screen (AppScreen.CLOCK or AppScreen.FULLSCREEN_PHOTO_FRAME).
    3. The Activity is in an active foreground lifecycle state.
 */
 object KeepScreenAwakePolicy {
@@ -22,7 +22,8 @@ object KeepScreenAwakePolicy {
         currentScreen: AppScreen,
         isActivityForeground: Boolean
     ): Boolean {
-        return isPreferenceEnabled && currentScreen == AppScreen.CLOCK && isActivityForeground
+        val isAmbientDisplay = currentScreen == AppScreen.CLOCK || currentScreen == AppScreen.FULLSCREEN_PHOTO_FRAME
+        return isPreferenceEnabled && isAmbientDisplay && isActivityForeground
     }
 
     // Overload accepting a boolean for whether the current screen is the clock screen.

@@ -92,6 +92,7 @@ fun SettingsScreen(
     onTogglePhotoFrame: (Boolean) -> Unit = {},
     onLaunchPhotoPicker: () -> Unit = {},
     onRemoveAllPhotos: () -> Unit = {},
+    onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -683,7 +684,8 @@ fun SettingsScreen(
                                 onToggleWeatherWidget = onToggleWeatherWidget,
                                 onTogglePhotoFrame = onTogglePhotoFrame,
                                 onLaunchPhotoPicker = onLaunchPhotoPicker,
-                                onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true }
+                                onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true },
+                                onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -725,7 +727,8 @@ fun SettingsScreen(
                             onToggleWeatherWidget = onToggleWeatherWidget,
                             onTogglePhotoFrame = onTogglePhotoFrame,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
-                            onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true }
+                            onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true },
+                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -803,7 +806,8 @@ private fun SettingsContent(
     onToggleWeatherWidget: (Boolean) -> Unit = {},
     onTogglePhotoFrame: (Boolean) -> Unit = {},
     onLaunchPhotoPicker: () -> Unit = {},
-    onRemoveAllPhotos: () -> Unit = {}
+    onRemoveAllPhotos: () -> Unit = {},
+    onOpenFullscreenPhotoFrame: (() -> Unit)? = null
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -974,7 +978,8 @@ private fun SettingsContent(
                 photoCount = preferences.photoFrameUris.size,
                 accentColor = accentColor,
                 onChoosePhotos = onLaunchPhotoPicker,
-                onRemoveAllPhotos = onRemoveAllPhotos
+                onRemoveAllPhotos = onRemoveAllPhotos,
+                onOpenFullscreen = onOpenFullscreenPhotoFrame
             )
         }
     }

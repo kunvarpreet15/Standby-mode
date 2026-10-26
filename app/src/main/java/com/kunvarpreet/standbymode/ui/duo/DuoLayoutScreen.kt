@@ -87,6 +87,7 @@ fun DuoLayoutScreen(
     onOpenWeatherPermissionSettings: () -> Unit = {},
     onWeatherRetry: () -> Unit = {},
     onLaunchPhotoPicker: () -> Unit = {},
+    onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
     onOpenSettings: () -> Unit
 ) {
     val palette = ClockThemePalette.resolve(
@@ -169,6 +170,7 @@ fun DuoLayoutScreen(
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
+                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -220,6 +222,7 @@ fun DuoLayoutScreen(
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
+                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -272,6 +275,7 @@ fun DuoLayoutScreen(
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
+                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -323,6 +327,7 @@ fun DuoLayoutScreen(
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
+                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -357,6 +362,7 @@ fun DuoWidgetRenderer(
     onWeatherRetry: () -> Unit = {},
     isSlideshowActive: Boolean = false,
     onLaunchPhotoPicker: () -> Unit = {},
+    onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -420,6 +426,7 @@ fun DuoWidgetRenderer(
                 isNightMode = preferences.isNightModeEnabled,
                 accentColor = palette.accentColor,
                 onChoosePhotos = onLaunchPhotoPicker,
+                onOpenFullscreen = onOpenFullscreenPhotoFrame,
                 modifier = modifier
             )
         }

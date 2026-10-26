@@ -101,6 +101,7 @@ object DuoWidgetPolicy {
             DisplaySpace.DUO_LAYOUT -> {
                 leftPaneWidget == DuoWidgetType.MEDIA || rightPaneWidget == DuoWidgetType.MEDIA
             }
+            DisplaySpace.PHOTO_FRAME -> false
         }
     }
 
@@ -180,11 +181,21 @@ object DuoWidgetPolicy {
         leftPaneWidget: DuoWidgetType,
         rightPaneWidget: DuoWidgetType
     ): Boolean {
-        if (!isPreferenceEnabled || currentScreen != AppScreen.CLOCK || !isActivityForeground) {
+        if (!isPreferenceEnabled || !isActivityForeground) {
             return false
         }
-        return displaySpace == DisplaySpace.DUO_LAYOUT && (
-            leftPaneWidget == DuoWidgetType.PHOTO_FRAME || rightPaneWidget == DuoWidgetType.PHOTO_FRAME
-        )
+        if (currentScreen == AppScreen.FULLSCREEN_PHOTO_FRAME) {
+            return true
+        }
+        if (currentScreen != AppScreen.CLOCK) {
+            return false
+        }
+        return when (displaySpace) {
+            DisplaySpace.PHOTO_FRAME -> true
+            DisplaySpace.DUO_LAYOUT -> {
+                leftPaneWidget == DuoWidgetType.PHOTO_FRAME || rightPaneWidget == DuoWidgetType.PHOTO_FRAME
+            }
+            DisplaySpace.FULLSCREEN_CLOCK -> false
+        }
     }
 }

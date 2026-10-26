@@ -72,6 +72,7 @@ fun PhotoFrameWidget(
     isNightMode: Boolean,
     accentColor: Color,
     onChoosePhotos: () -> Unit,
+    onOpenFullscreen: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (photoUris.isEmpty()) {
@@ -130,6 +131,34 @@ fun PhotoFrameWidget(
                 modifier = Modifier.fillMaxSize()
             )
         }
+
+        if (onOpenFullscreen != null) {
+            Surface(
+                onClick = onOpenFullscreen,
+                shape = RoundedCornerShape(8.dp),
+                color = if (isNightMode) StandByNightSurface else Color(0x66000000),
+                border = BorderStroke(
+                    1.dp,
+                    if (isNightMode) StandByNightTextMuted.copy(alpha = 0.25f) else Color(0x33FFFFFF)
+                ),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(36.dp)
+                    .semantics {
+                        contentDescription = "Expand photo frame to fullscreen"
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_fullscreen),
+                        contentDescription = null,
+                        tint = if (isNightMode) StandByNightText else Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -138,7 +167,7 @@ fun PhotoFrameWidget(
  * and adaptive smart crop alignment.
  */
 @Composable
-private fun PhotoItemView(
+internal fun PhotoItemView(
     uriString: String,
     photoIndex: Int,
     totalPhotos: Int,

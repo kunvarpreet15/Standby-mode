@@ -80,6 +80,7 @@ import com.kunvarpreet.standbymode.ui.clock.RetroFlipClockView
 import com.kunvarpreet.standbymode.ui.display.PageDotsIndicator
 import com.kunvarpreet.standbymode.ui.duo.DuoLayoutScreen
 import com.kunvarpreet.standbymode.ui.media.MediaMiniWidget
+import com.kunvarpreet.standbymode.ui.photoframe.FullscreenPhotoFrameScreen
 import com.kunvarpreet.standbymode.ui.settings.SettingsButton
 import com.kunvarpreet.standbymode.ui.settings.SettingsScreen
 import com.kunvarpreet.standbymode.ui.theme.StandByBackground
@@ -91,7 +92,8 @@ import kotlinx.coroutines.launch
  */
 enum class AppScreen {
     CLOCK,
-    SETTINGS
+    SETTINGS,
+    FULLSCREEN_PHOTO_FRAME
 }
 
 class MainActivity : ComponentActivity() {
@@ -494,6 +496,7 @@ fun StandByAppShell(
                 calendarUiState = calendarUiState,
                 weatherUiState = weatherUiState,
                 pagerState = pagerState,
+                isActivityForeground = isActivityForeground,
                 leftPaneWidget = leftPaneWidget,
                 rightPaneWidget = rightPaneWidget,
                 onLeftPaneWidgetChanged = { leftPaneWidget = it },
@@ -508,6 +511,11 @@ fun StandByAppShell(
                 onOpenWeatherPermissionSettings = openWeatherSettings,
                 onWeatherRetry = { weatherRepository.refresh() },
                 onLaunchPhotoPicker = onLaunchPhotoPicker,
+                onOpenFullscreenPhotoFrame = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(DisplaySpace.PHOTO_FRAME.pageIndex)
+                    }
+                },
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 modifier = modifier
             )
@@ -563,7 +571,30 @@ fun StandByAppShell(
                 },
                 onLaunchPhotoPicker = onLaunchPhotoPicker,
                 onRemoveAllPhotos = onRemoveAllPhotos,
+                onOpenFullscreenPhotoFrame = {
+                    currentScreen = AppScreen.CLOCK
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(DisplaySpace.PHOTO_FRAME.pageIndex)
+                    }
+                },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
+                modifier = modifier
+            )
+        }
+        AppScreen.FULLSCREEN_PHOTO_FRAME -> {
+            val palette = ClockThemePalette.resolve(
+                isNightMode = preferences.isNightModeEnabled,
+                selectedAccent = preferences.accentColor
+            )
+            FullscreenPhotoFrameScreen(
+                photoUris = preferences.photoFrameUris,
+                isSlideshowActive = isActivityForeground && preferences.showPhotoFrame,
+                isNightMode = preferences.isNightModeEnabled,
+                accentColor = palette.accentColor,
+                formattedTime = formattedTime,
+                showDate = preferences.showDate,
+                onBack = { currentScreen = AppScreen.CLOCK },
+                onChoosePhotos = onLaunchPhotoPicker,
                 modifier = modifier
             )
         }
@@ -585,6 +616,7 @@ fun FullscreenClockScreen(
     pagerState: PagerState = rememberPagerState(initialPage = DisplaySpace.DEFAULT_PAGE_INDEX) {
         DisplaySpace.entries.size
     },
+    isActivityForeground: Boolean = true,
     leftPaneWidget: DuoWidgetType = DuoWidgetType.CLOCK,
     rightPaneWidget: DuoWidgetType = if (preferences.showMediaPlayer) DuoWidgetType.MEDIA else DuoWidgetType.BATTERY_STATUS,
     onLeftPaneWidgetChanged: (DuoWidgetType) -> Unit = {},
@@ -599,6 +631,7 @@ fun FullscreenClockScreen(
     onOpenWeatherPermissionSettings: () -> Unit = {},
     onWeatherRetry: () -> Unit = {},
     onLaunchPhotoPicker: () -> Unit = {},
+    onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -629,13 +662,21 @@ fun FullscreenClockScreen(
         label = "burn_in_pixel_shift_y"
     )
 
+    if (pagerState.currentPage == DisplaySpace.FULLSCREEN_CLOCK.pageIndex) {
+        BackHandler {
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(DisplaySpace.DUO_LAYOUT.pageIndex)
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(StandByBackground)
             .safeDrawingPadding()
     ) {
-        // Horizontal display space pager: exactly 2 pages (Duo Layout and Fullscreen Clock)
+        // Horizontal display space pager: 3 primary display spaces (Duo Layout, Fullscreen Clock, Photo Frame)
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -646,14 +687,13 @@ fun FullscreenClockScreen(
         ) { pageIndex ->
             val displaySpace = DisplaySpace.fromPageIndex(pageIndex)
 
-            // Shifted Visual Content Group (OLED burn-in offset applied per space)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .offset(x = animatedX, y = animatedY)
-            ) {
-                when (displaySpace) {
-                    DisplaySpace.DUO_LAYOUT -> {
+            when (displaySpace) {
+                DisplaySpace.DUO_LAYOUT -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .offset(x = animatedX, y = animatedY)
+                    ) {
                         DuoLayoutScreen(
                             preferences = preferences,
                             formattedTime = formattedTime,
@@ -675,11 +715,18 @@ fun FullscreenClockScreen(
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
+                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                    DisplaySpace.FULLSCREEN_CLOCK -> {
+                }
+                DisplaySpace.FULLSCREEN_CLOCK -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .offset(x = animatedX, y = animatedY)
+                    ) {
                         FullscreenClockPage(
                             preferences = preferences,
                             formattedTime = formattedTime,
@@ -694,6 +741,24 @@ fun FullscreenClockScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+                }
+                DisplaySpace.PHOTO_FRAME -> {
+                    // Fullscreen Photo Frame: full-bleed without clock pixel shift
+                    FullscreenPhotoFrameScreen(
+                        photoUris = preferences.photoFrameUris,
+                        isSlideshowActive = isActivityForeground && preferences.showPhotoFrame && pagerState.currentPage == DisplaySpace.PHOTO_FRAME.pageIndex,
+                        isNightMode = preferences.isNightModeEnabled,
+                        accentColor = palette.accentColor,
+                        formattedTime = formattedTime,
+                        showDate = preferences.showDate,
+                        onBack = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(DisplaySpace.FULLSCREEN_CLOCK.pageIndex)
+                            }
+                        },
+                        onChoosePhotos = onLaunchPhotoPicker,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }

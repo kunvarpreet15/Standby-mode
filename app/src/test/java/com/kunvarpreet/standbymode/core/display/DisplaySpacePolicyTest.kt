@@ -24,13 +24,15 @@ import java.time.Instant
 class DisplaySpacePolicyTest {
 
     @Test
-    fun displaySpace_representsExactlyTwoDestinations() {
+    fun displaySpace_representsPrimaryDestinations() {
         val spaces = DisplaySpace.entries
-        assertEquals(2, spaces.size)
+        assertEquals(3, spaces.size)
         assertEquals(DisplaySpace.DUO_LAYOUT, spaces[0])
         assertEquals(DisplaySpace.FULLSCREEN_CLOCK, spaces[1])
+        assertEquals(DisplaySpace.PHOTO_FRAME, spaces[2])
         assertEquals(0, DisplaySpace.DUO_LAYOUT.pageIndex)
         assertEquals(1, DisplaySpace.FULLSCREEN_CLOCK.pageIndex)
+        assertEquals(2, DisplaySpace.PHOTO_FRAME.pageIndex)
     }
 
     @Test
@@ -45,10 +47,11 @@ class DisplaySpacePolicyTest {
     fun displaySpace_fromPageIndexResolvesCorrectlyAndHandlesOutOfBoundsGracefully() {
         assertEquals(DisplaySpace.DUO_LAYOUT, DisplaySpace.fromPageIndex(0))
         assertEquals(DisplaySpace.FULLSCREEN_CLOCK, DisplaySpace.fromPageIndex(1))
+        assertEquals(DisplaySpace.PHOTO_FRAME, DisplaySpace.fromPageIndex(2))
 
         // Out-of-bounds fallback safely returns default DUO_LAYOUT
         assertEquals(DisplaySpace.DUO_LAYOUT, DisplaySpace.fromPageIndex(-1))
-        assertEquals(DisplaySpace.DUO_LAYOUT, DisplaySpace.fromPageIndex(2))
+        assertEquals(DisplaySpace.DUO_LAYOUT, DisplaySpace.fromPageIndex(3))
         assertEquals(DisplaySpace.DUO_LAYOUT, DisplaySpace.fromPageIndex(100))
     }
 

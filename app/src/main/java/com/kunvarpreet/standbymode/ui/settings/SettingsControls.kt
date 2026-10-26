@@ -257,6 +257,7 @@ fun PhotoFrameSettingsControls(
     accentColor: Color,
     onChoosePhotos: () -> Unit,
     onRemoveAllPhotos: () -> Unit,
+    onOpenFullscreen: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -328,6 +329,33 @@ fun PhotoFrameSettingsControls(
                             fontFamily = FontFamily.SansSerif
                         )
                     }
+                }
+            }
+        }
+
+        if (onOpenFullscreen != null && photoCount > 0) {
+            Surface(
+                onClick = onOpenFullscreen,
+                color = StandBySurface,
+                border = BorderStroke(1.dp, accentColor),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 44.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "View Fullscreen Slideshow",
+                        color = accentColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = FontFamily.SansSerif
+                    )
                 }
             }
         }
