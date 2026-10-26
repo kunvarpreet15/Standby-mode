@@ -47,6 +47,7 @@ import com.kunvarpreet.standbymode.ui.clock.BoldDigitalClockView
 import com.kunvarpreet.standbymode.ui.clock.DatePill
 import com.kunvarpreet.standbymode.ui.clock.RetroFlipClockView
 import com.kunvarpreet.standbymode.ui.media.MediaMiniWidget
+import com.kunvarpreet.standbymode.ui.photoframe.PhotoFrameWidget
 import com.kunvarpreet.standbymode.ui.theme.StandByBorder
 import com.kunvarpreet.standbymode.ui.theme.StandByNightSurface
 import com.kunvarpreet.standbymode.ui.theme.StandByNightText
@@ -85,6 +86,7 @@ fun DuoLayoutScreen(
     onCalendarRetry: () -> Unit = {},
     onOpenWeatherPermissionSettings: () -> Unit = {},
     onWeatherRetry: () -> Unit = {},
+    onLaunchPhotoPicker: () -> Unit = {},
     onOpenSettings: () -> Unit
 ) {
     val palette = ClockThemePalette.resolve(
@@ -96,13 +98,15 @@ fun DuoLayoutScreen(
         isLeftPane = true,
         showMediaPlayer = preferences.showMediaPlayer,
         showCalendarAgenda = preferences.showCalendarAgenda,
-        showWeatherWidget = preferences.showWeatherWidget
+        showWeatherWidget = preferences.showWeatherWidget,
+        showPhotoFrame = preferences.showPhotoFrame
     )
     val availableRightWidgets = DuoWidgetPolicy.getAvailableWidgets(
         isLeftPane = false,
         showMediaPlayer = preferences.showMediaPlayer,
         showCalendarAgenda = preferences.showCalendarAgenda,
-        showWeatherWidget = preferences.showWeatherWidget
+        showWeatherWidget = preferences.showWeatherWidget,
+        showPhotoFrame = preferences.showPhotoFrame
     )
 
     BoxWithConstraints(
@@ -154,6 +158,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
+                            isSlideshowActive = leftPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -163,6 +168,7 @@ fun DuoLayoutScreen(
                             onCalendarRetry = onCalendarRetry,
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
+                            onLaunchPhotoPicker = onLaunchPhotoPicker,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -203,6 +209,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
+                            isSlideshowActive = rightPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -212,6 +219,7 @@ fun DuoLayoutScreen(
                             onCalendarRetry = onCalendarRetry,
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
+                            onLaunchPhotoPicker = onLaunchPhotoPicker,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -253,6 +261,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
+                            isSlideshowActive = leftPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -262,6 +271,7 @@ fun DuoLayoutScreen(
                             onCalendarRetry = onCalendarRetry,
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
+                            onLaunchPhotoPicker = onLaunchPhotoPicker,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -302,6 +312,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
+                            isSlideshowActive = rightPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -311,6 +322,7 @@ fun DuoLayoutScreen(
                             onCalendarRetry = onCalendarRetry,
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
+                            onLaunchPhotoPicker = onLaunchPhotoPicker,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -343,6 +355,8 @@ fun DuoWidgetRenderer(
     onCalendarRetry: () -> Unit = {},
     onOpenWeatherPermissionSettings: () -> Unit = {},
     onWeatherRetry: () -> Unit = {},
+    isSlideshowActive: Boolean = false,
+    onLaunchPhotoPicker: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -396,6 +410,16 @@ fun DuoWidgetRenderer(
                 isNightMode = preferences.isNightModeEnabled,
                 onOpenPermissionSettings = onOpenWeatherPermissionSettings,
                 onRetry = onWeatherRetry,
+                modifier = modifier
+            )
+        }
+        DuoWidgetType.PHOTO_FRAME -> {
+            PhotoFrameWidget(
+                photoUris = preferences.photoFrameUris,
+                isSlideshowActive = isSlideshowActive,
+                isNightMode = preferences.isNightModeEnabled,
+                accentColor = palette.accentColor,
+                onChoosePhotos = onLaunchPhotoPicker,
                 modifier = modifier
             )
         }

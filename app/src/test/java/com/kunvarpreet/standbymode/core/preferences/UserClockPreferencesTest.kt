@@ -28,6 +28,62 @@ class UserClockPreferencesTest {
         assertEquals(false, prefs.showMediaPlayer)
         assertEquals(false, prefs.showCalendarAgenda)
         assertEquals(false, prefs.showWeatherWidget)
+        assertEquals(false, prefs.showPhotoFrame)
+        assertEquals(emptyList<String>(), prefs.photoFrameUris)
+    }
+
+    @Test
+    fun showPhotoFrame_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences(
+            clockFace = ClockFaceType.ANALOG,
+            is24Hour = true,
+            showSeconds = true,
+            showDate = false,
+            accentColor = AccentColorOption.PURPLE,
+            isNightModeEnabled = true,
+            showChargingNotification = true,
+            isBurnInProtectionEnabled = false,
+            keepScreenAwake = true,
+            showBatteryStatus = true,
+            showMediaPlayer = true,
+            showCalendarAgenda = true,
+            showWeatherWidget = true,
+            showPhotoFrame = false,
+            photoFrameUris = listOf("content://media/external/images/media/1")
+        )
+        val toggled = initial.copy(showPhotoFrame = true)
+
+        assertEquals(true, toggled.showPhotoFrame)
+        assertEquals(listOf("content://media/external/images/media/1"), toggled.photoFrameUris)
+        assertEquals(ClockFaceType.ANALOG, toggled.clockFace)
+        assertEquals(true, toggled.is24Hour)
+        assertEquals(true, toggled.showSeconds)
+        assertEquals(false, toggled.showDate)
+        assertEquals(AccentColorOption.PURPLE, toggled.accentColor)
+        assertEquals(true, toggled.isNightModeEnabled)
+        assertEquals(true, toggled.showChargingNotification)
+        assertEquals(false, toggled.isBurnInProtectionEnabled)
+        assertEquals(true, toggled.keepScreenAwake)
+        assertEquals(true, toggled.showBatteryStatus)
+        assertEquals(true, toggled.showMediaPlayer)
+        assertEquals(true, toggled.showCalendarAgenda)
+        assertEquals(true, toggled.showWeatherWidget)
+    }
+
+    @Test
+    fun showPhotoFrame_remainsCompletelyIndependentOfOtherFeatures() {
+        val initial = UserClockPreferences()
+
+        val photoFrameEnabled = initial.copy(showPhotoFrame = true)
+        assertEquals(true, photoFrameEnabled.showPhotoFrame)
+        assertEquals(false, photoFrameEnabled.showWeatherWidget)
+        assertEquals(false, photoFrameEnabled.showCalendarAgenda)
+        assertEquals(false, photoFrameEnabled.showMediaPlayer)
+        assertEquals(false, photoFrameEnabled.showBatteryStatus)
+        assertEquals(false, photoFrameEnabled.showChargingNotification)
+        assertEquals(false, photoFrameEnabled.isNightModeEnabled)
+        assertEquals(true, photoFrameEnabled.keepScreenAwake)
+        assertEquals(true, photoFrameEnabled.isBurnInProtectionEnabled)
     }
 
     @Test

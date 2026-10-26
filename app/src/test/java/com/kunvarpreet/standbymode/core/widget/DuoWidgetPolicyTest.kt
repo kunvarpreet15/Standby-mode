@@ -647,4 +647,175 @@ class DuoWidgetPolicyTest {
             )
         )
     }
+
+    @Test
+    fun availableWidgets_withPhotoFrameEnabled() {
+        val leftAvailable = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = true,
+            showCalendarAgenda = true,
+            showWeatherWidget = true,
+            showPhotoFrame = true
+        )
+        val rightAvailable = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = false,
+            showMediaPlayer = true,
+            showCalendarAgenda = true,
+            showWeatherWidget = true,
+            showPhotoFrame = true
+        )
+
+        assertEquals(6, leftAvailable.size)
+        assertEquals(
+            listOf(
+                DuoWidgetType.CLOCK,
+                DuoWidgetType.CALENDAR,
+                DuoWidgetType.WEATHER,
+                DuoWidgetType.BATTERY_STATUS,
+                DuoWidgetType.PHOTO_FRAME,
+                DuoWidgetType.MEDIA
+            ),
+            leftAvailable
+        )
+
+        assertEquals(6, rightAvailable.size)
+        assertEquals(
+            listOf(
+                DuoWidgetType.MEDIA,
+                DuoWidgetType.PHOTO_FRAME,
+                DuoWidgetType.CALENDAR,
+                DuoWidgetType.WEATHER,
+                DuoWidgetType.BATTERY_STATUS,
+                DuoWidgetType.CLOCK
+            ),
+            rightAvailable
+        )
+    }
+
+    @Test
+    fun disablingPhotoFrame_reconcilesActivePane_withoutResettingOtherPane() {
+        // Initial state: photo frame enabled, left pane on PHOTO_FRAME, right pane on BATTERY_STATUS
+        val availableWhenEnabledLeft = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = false,
+            showPhotoFrame = true
+        )
+        assertTrue(availableWhenEnabledLeft.contains(DuoWidgetType.PHOTO_FRAME))
+
+        // When Photo Frame is disabled, left pane reconciles to default (CLOCK), right pane stays on BATTERY_STATUS
+        val availableWhenDisabledLeft = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = true,
+            showMediaPlayer = false,
+            showPhotoFrame = false
+        )
+        val availableWhenDisabledRight = DuoWidgetPolicy.getAvailableWidgets(
+            isLeftPane = false,
+            showMediaPlayer = false,
+            showPhotoFrame = false
+        )
+
+        val defaultLeft = DuoWidgetPolicy.getDefaultWidget(isLeftPane = true, showMediaPlayer = false)
+        val defaultRight = DuoWidgetPolicy.getDefaultWidget(isLeftPane = false, showMediaPlayer = false)
+
+        val reconciledLeft = DuoWidgetPolicy.resolveValidSelection(
+            current = DuoWidgetType.PHOTO_FRAME,
+            available = availableWhenDisabledLeft,
+            default = defaultLeft
+        )
+        val reconciledRight = DuoWidgetPolicy.resolveValidSelection(
+            current = DuoWidgetType.BATTERY_STATUS,
+            available = availableWhenDisabledRight,
+            default = defaultRight
+        )
+
+        assertEquals(DuoWidgetType.CLOCK, reconciledLeft)
+        assertEquals(DuoWidgetType.BATTERY_STATUS, reconciledRight)
+    }
+
+    @Test
+    fun isPhotoFrameVisible_adheresToVisibilityContract() {
+        // 1. Preference disabled -> false
+        assertFalse(
+            DuoWidgetPolicy.isPhotoFrameVisible(
+                isPreferenceEnabled = false,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.PHOTO_FRAME,
+                rightPaneWidget = DuoWidgetType.BATTERY_STATUS
+            )
+        )
+
+        // 2. Activity in background -> false
+        assertFalse(
+            DuoWidgetPolicy.isPhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = false,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.PHOTO_FRAME,
+                rightPaneWidget = DuoWidgetType.BATTERY_STATUS
+            )
+        )
+
+        // 3. User in Settings -> false
+        assertFalse(
+            DuoWidgetPolicy.isPhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.SETTINGS,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.PHOTO_FRAME,
+                rightPaneWidget = DuoWidgetType.BATTERY_STATUS
+            )
+        )
+
+        // 4. In Fullscreen Clock -> false
+        assertFalse(
+            DuoWidgetPolicy.isPhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.FULLSCREEN_CLOCK,
+                leftPaneWidget = DuoWidgetType.PHOTO_FRAME,
+                rightPaneWidget = DuoWidgetType.BATTERY_STATUS
+            )
+        )
+
+        // 5. In Duo Layout: true if left pane displays PHOTO_FRAME
+        assertTrue(
+            DuoWidgetPolicy.isPhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.PHOTO_FRAME,
+                rightPaneWidget = DuoWidgetType.BATTERY_STATUS
+            )
+        )
+
+        // 6. In Duo Layout: true if right pane displays PHOTO_FRAME
+        assertTrue(
+            DuoWidgetPolicy.isPhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.PHOTO_FRAME
+            )
+        )
+
+        // 7. In Duo Layout: false if neither pane displays PHOTO_FRAME
+        assertFalse(
+            DuoWidgetPolicy.isPhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.BATTERY_STATUS
+            )
+        )
+    }
 }

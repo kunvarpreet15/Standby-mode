@@ -32,6 +32,11 @@ enum class DuoWidgetType(
         id = "weather",
         displayName = "Weather",
         accessibilityName = "Weather and forecast widget"
+    ),
+    PHOTO_FRAME(
+        id = "photo_frame",
+        displayName = "Photo Frame",
+        accessibilityName = "Photo frame widget"
     );
 
     companion object {

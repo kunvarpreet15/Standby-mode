@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.kunvarpreet.standbymode.core.photoframe.PhotoFrameLogic
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -34,6 +35,8 @@ class PreferencesRepository(private val context: Context) {
         val SHOW_MEDIA_PLAYER = booleanPreferencesKey("show_media_player")
         val SHOW_CALENDAR_AGENDA = booleanPreferencesKey("show_calendar_agenda")
         val SHOW_WEATHER_WIDGET = booleanPreferencesKey("show_weather_widget")
+        val SHOW_PHOTO_FRAME = booleanPreferencesKey("show_photo_frame")
+        val PHOTO_FRAME_URIS = stringPreferencesKey("photo_frame_uris")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -58,6 +61,9 @@ class PreferencesRepository(private val context: Context) {
             val showMediaPlayer = preferences[PreferencesKeys.SHOW_MEDIA_PLAYER] ?: false
             val showCalendarAgenda = preferences[PreferencesKeys.SHOW_CALENDAR_AGENDA] ?: false
             val showWeatherWidget = preferences[PreferencesKeys.SHOW_WEATHER_WIDGET] ?: false
+            val showPhotoFrame = preferences[PreferencesKeys.SHOW_PHOTO_FRAME] ?: false
+            val rawPhotoUris = preferences[PreferencesKeys.PHOTO_FRAME_URIS]
+            val photoFrameUris = PhotoFrameLogic.deserializeUriList(rawPhotoUris)
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -72,7 +78,9 @@ class PreferencesRepository(private val context: Context) {
                 showBatteryStatus = showBatteryStatus,
                 showMediaPlayer = showMediaPlayer,
                 showCalendarAgenda = showCalendarAgenda,
-                showWeatherWidget = showWeatherWidget
+                showWeatherWidget = showWeatherWidget,
+                showPhotoFrame = showPhotoFrame,
+                photoFrameUris = photoFrameUris
             )
         }
 
@@ -159,6 +167,19 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateShowWeatherWidget(showWeatherWidget: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.SHOW_WEATHER_WIDGET] = showWeatherWidget
+        }
+    }
+
+    suspend fun updateShowPhotoFrame(showPhotoFrame: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.SHOW_PHOTO_FRAME] = showPhotoFrame
+        }
+    }
+
+    suspend fun updatePhotoFrameUris(uris: List<String>) {
+        val sanitized = PhotoFrameLogic.sanitizeUriList(uris)
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.PHOTO_FRAME_URIS] = PhotoFrameLogic.serializeUriList(sanitized)
         }
     }
 }

@@ -10,14 +10,15 @@ import com.kunvarpreet.standbymode.core.display.DisplaySpace
 object DuoWidgetPolicy {
 
     /**
-     * Resolves the list of available widgets for a given pane based on whether media player and calendar are enabled.
+     * Resolves the list of available widgets for a given pane based on whether media player, calendar, weather, and photo frame are enabled.
      * Index 0 always corresponds to the fresh-launch default for that pane.
      */
     fun getAvailableWidgets(
         isLeftPane: Boolean,
         showMediaPlayer: Boolean,
         showCalendarAgenda: Boolean = false,
-        showWeatherWidget: Boolean = false
+        showWeatherWidget: Boolean = false,
+        showPhotoFrame: Boolean = false
     ): List<DuoWidgetType> {
         return if (isLeftPane) {
             buildList {
@@ -25,17 +26,20 @@ object DuoWidgetPolicy {
                 if (showCalendarAgenda) add(DuoWidgetType.CALENDAR)
                 if (showWeatherWidget) add(DuoWidgetType.WEATHER)
                 add(DuoWidgetType.BATTERY_STATUS)
+                if (showPhotoFrame) add(DuoWidgetType.PHOTO_FRAME)
                 if (showMediaPlayer) add(DuoWidgetType.MEDIA)
             }
         } else {
             buildList {
                 if (showMediaPlayer) {
                     add(DuoWidgetType.MEDIA)
+                    if (showPhotoFrame) add(DuoWidgetType.PHOTO_FRAME)
                     if (showCalendarAgenda) add(DuoWidgetType.CALENDAR)
                     if (showWeatherWidget) add(DuoWidgetType.WEATHER)
                     add(DuoWidgetType.BATTERY_STATUS)
                     add(DuoWidgetType.CLOCK)
                 } else {
+                    if (showPhotoFrame) add(DuoWidgetType.PHOTO_FRAME)
                     add(DuoWidgetType.BATTERY_STATUS)
                     if (showCalendarAgenda) add(DuoWidgetType.CALENDAR)
                     if (showWeatherWidget) add(DuoWidgetType.WEATHER)
@@ -52,7 +56,8 @@ object DuoWidgetPolicy {
         isLeftPane: Boolean,
         showMediaPlayer: Boolean,
         showCalendarAgenda: Boolean = false,
-        showWeatherWidget: Boolean = false
+        showWeatherWidget: Boolean = false,
+        showPhotoFrame: Boolean = false
     ): DuoWidgetType {
         return if (isLeftPane) {
             DuoWidgetType.CLOCK
@@ -160,6 +165,26 @@ object DuoWidgetPolicy {
         }
         return displaySpace == DisplaySpace.DUO_LAYOUT && (
             leftPaneWidget == DuoWidgetType.WEATHER || rightPaneWidget == DuoWidgetType.WEATHER
+        )
+    }
+
+    /**
+     * Evaluates whether the Photo Frame widget is actively visible on the user's screen.
+     * Slideshow intervals and image decoding are active only when this returns true.
+     */
+    fun isPhotoFrameVisible(
+        isPreferenceEnabled: Boolean,
+        currentScreen: AppScreen,
+        isActivityForeground: Boolean,
+        displaySpace: DisplaySpace,
+        leftPaneWidget: DuoWidgetType,
+        rightPaneWidget: DuoWidgetType
+    ): Boolean {
+        if (!isPreferenceEnabled || currentScreen != AppScreen.CLOCK || !isActivityForeground) {
+            return false
+        }
+        return displaySpace == DisplaySpace.DUO_LAYOUT && (
+            leftPaneWidget == DuoWidgetType.PHOTO_FRAME || rightPaneWidget == DuoWidgetType.PHOTO_FRAME
         )
     }
 }

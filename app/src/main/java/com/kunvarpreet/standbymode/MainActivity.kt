@@ -10,8 +10,11 @@ import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -57,6 +60,9 @@ import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
 import com.kunvarpreet.standbymode.core.media.MediaNotificationListenerService
 import com.kunvarpreet.standbymode.core.media.MediaSessionRepository
 import com.kunvarpreet.standbymode.core.media.MediaWidgetUiState
+import com.kunvarpreet.standbymode.core.photoframe.AsyncPhotoLoader
+import com.kunvarpreet.standbymode.core.photoframe.FaceCropAnalyzer
+import com.kunvarpreet.standbymode.core.photoframe.PhotoFrameLogic
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
@@ -119,6 +125,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        FaceCropAnalyzer.releaseDetector()
     }
 }
 
@@ -222,7 +229,8 @@ fun StandByAppShell(
             isLeftPane = true,
             showMediaPlayer = preferences.showMediaPlayer,
             showCalendarAgenda = preferences.showCalendarAgenda,
-            showWeatherWidget = preferences.showWeatherWidget
+            showWeatherWidget = preferences.showWeatherWidget,
+            showPhotoFrame = preferences.showPhotoFrame
         )
     }
     val defaultRight = remember {
@@ -230,25 +238,28 @@ fun StandByAppShell(
             isLeftPane = false,
             showMediaPlayer = preferences.showMediaPlayer,
             showCalendarAgenda = preferences.showCalendarAgenda,
-            showWeatherWidget = preferences.showWeatherWidget
+            showWeatherWidget = preferences.showWeatherWidget,
+            showPhotoFrame = preferences.showPhotoFrame
         )
     }
 
     var leftPaneWidget by rememberSaveable { mutableStateOf(defaultLeft) }
     var rightPaneWidget by rememberSaveable { mutableStateOf(defaultRight) }
 
-    // Reconcile selections if preferences change (e.g. Media, Calendar, or Weather toggled in Settings)
+    // Reconcile selections if preferences change (e.g. Media, Calendar, Weather, or Photo Frame toggled in Settings)
     val availableLeft = DuoWidgetPolicy.getAvailableWidgets(
         isLeftPane = true,
         showMediaPlayer = preferences.showMediaPlayer,
         showCalendarAgenda = preferences.showCalendarAgenda,
-        showWeatherWidget = preferences.showWeatherWidget
+        showWeatherWidget = preferences.showWeatherWidget,
+        showPhotoFrame = preferences.showPhotoFrame
     )
     val availableRight = DuoWidgetPolicy.getAvailableWidgets(
         isLeftPane = false,
         showMediaPlayer = preferences.showMediaPlayer,
         showCalendarAgenda = preferences.showCalendarAgenda,
-        showWeatherWidget = preferences.showWeatherWidget
+        showWeatherWidget = preferences.showWeatherWidget,
+        showPhotoFrame = preferences.showPhotoFrame
     )
 
     val reconciledLeft = DuoWidgetPolicy.resolveValidSelection(leftPaneWidget, availableLeft, defaultLeft)
@@ -398,6 +409,81 @@ fun StandByAppShell(
         }
     }
 
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(
+            maxItems = PhotoFrameLogic.MAX_PHOTO_COUNT
+        )
+    ) { uris ->
+        if (!uris.isNullOrEmpty()) {
+            val sanitized = PhotoFrameLogic.sanitizeUriList(
+                uris.map { it.toString() },
+                PhotoFrameLogic.MAX_PHOTO_COUNT
+            )
+            val contentResolver = context.contentResolver
+            for (uriString in sanitized) {
+                try {
+                    val uri = Uri.parse(uriString)
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("MainActivity", "Failed to take persistable URI permission for $uriString", e)
+                }
+            }
+            val previousUris = preferences.photoFrameUris
+            val orphanedUris = PhotoFrameLogic.findOrphanedUris(previousUris, sanitized)
+            for (oldUriString in orphanedUris) {
+                try {
+                    val uri = Uri.parse(oldUriString)
+                    contentResolver.releasePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("MainActivity", "Failed to release URI permission for $oldUriString", e)
+                }
+            }
+            coroutineScope.launch {
+                repository.updatePhotoFrameUris(sanitized)
+            }
+        }
+    }
+
+    val onLaunchPhotoPicker: () -> Unit = remember(photoPickerLauncher) {
+        {
+            try {
+                photoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to launch Photo Picker", e)
+            }
+        }
+    }
+
+    val onRemoveAllPhotos: () -> Unit = remember(context, preferences.photoFrameUris) {
+        {
+            val previousUris = preferences.photoFrameUris
+            val contentResolver = context.contentResolver
+            for (uriString in previousUris) {
+                try {
+                    val uri = Uri.parse(uriString)
+                    contentResolver.releasePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("MainActivity", "Failed to release URI permission for $uriString", e)
+                }
+            }
+            AsyncPhotoLoader.clearCache()
+            coroutineScope.launch {
+                repository.updatePhotoFrameUris(emptyList())
+            }
+        }
+    }
+
     when (currentScreen) {
         AppScreen.CLOCK -> {
             FullscreenClockScreen(
@@ -421,6 +507,7 @@ fun StandByAppShell(
                 onCalendarRetry = { calendarRepository.refresh() },
                 onOpenWeatherPermissionSettings = openWeatherSettings,
                 onWeatherRetry = { weatherRepository.refresh() },
+                onLaunchPhotoPicker = onLaunchPhotoPicker,
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 modifier = modifier
             )
@@ -471,6 +558,11 @@ fun StandByAppShell(
                 onShowWeatherWidgetChanged = { showWeather ->
                     coroutineScope.launch { repository.updateShowWeatherWidget(showWeather) }
                 },
+                onTogglePhotoFrame = { showPhotoFrame ->
+                    coroutineScope.launch { repository.updateShowPhotoFrame(showPhotoFrame) }
+                },
+                onLaunchPhotoPicker = onLaunchPhotoPicker,
+                onRemoveAllPhotos = onRemoveAllPhotos,
                 onDismiss = { currentScreen = AppScreen.CLOCK },
                 modifier = modifier
             )
@@ -506,6 +598,7 @@ fun FullscreenClockScreen(
     onCalendarRetry: () -> Unit = {},
     onOpenWeatherPermissionSettings: () -> Unit = {},
     onWeatherRetry: () -> Unit = {},
+    onLaunchPhotoPicker: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -581,6 +674,7 @@ fun FullscreenClockScreen(
                             onCalendarRetry = onCalendarRetry,
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
+                            onLaunchPhotoPicker = onLaunchPhotoPicker,
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )

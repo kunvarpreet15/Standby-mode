@@ -89,6 +89,9 @@ fun SettingsScreen(
     onShowMediaPlayerChanged: (Boolean) -> Unit = {},
     onShowCalendarAgendaChanged: (Boolean) -> Unit = {},
     onShowWeatherWidgetChanged: (Boolean) -> Unit = {},
+    onTogglePhotoFrame: (Boolean) -> Unit = {},
+    onLaunchPhotoPicker: () -> Unit = {},
+    onRemoveAllPhotos: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -103,6 +106,8 @@ fun SettingsScreen(
 
     var showWeatherPermissionExplanationDialog by remember { mutableStateOf(false) }
     var showWeatherPermissionDeniedFeedback by remember { mutableStateOf(false) }
+
+    var showRemoveAllPhotosConfirmationDialog by remember { mutableStateOf(false) }
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -556,6 +561,54 @@ fun SettingsScreen(
         )
     }
 
+    if (showRemoveAllPhotosConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveAllPhotosConfirmationDialog = false },
+            title = {
+                Text(
+                    text = "Remove All Photos?",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove all selected photos from the Photo Frame widget and release associated permissions. You can select photos again at any time.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRemoveAllPhotosConfirmationDialog = false
+                        onRemoveAllPhotos()
+                    }
+                ) {
+                    Text(
+                        text = "Remove",
+                        color = androidx.compose.ui.graphics.Color(0xFFFF453A),
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveAllPhotosConfirmationDialog = false }) {
+                    Text(
+                        text = "Cancel",
+                        color = StandByTextMuted,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -627,7 +680,10 @@ fun SettingsScreen(
                                 onShowBatteryStatusChanged = onShowBatteryStatusChanged,
                                 onToggleMediaPlayer = onToggleMediaPlayer,
                                 onToggleCalendarAgenda = onToggleCalendarAgenda,
-                                onToggleWeatherWidget = onToggleWeatherWidget
+                                onToggleWeatherWidget = onToggleWeatherWidget,
+                                onTogglePhotoFrame = onTogglePhotoFrame,
+                                onLaunchPhotoPicker = onLaunchPhotoPicker,
+                                onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true }
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -666,7 +722,10 @@ fun SettingsScreen(
                             onShowBatteryStatusChanged = onShowBatteryStatusChanged,
                             onToggleMediaPlayer = onToggleMediaPlayer,
                             onToggleCalendarAgenda = onToggleCalendarAgenda,
-                            onToggleWeatherWidget = onToggleWeatherWidget
+                            onToggleWeatherWidget = onToggleWeatherWidget,
+                            onTogglePhotoFrame = onTogglePhotoFrame,
+                            onLaunchPhotoPicker = onLaunchPhotoPicker,
+                            onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -741,7 +800,10 @@ private fun SettingsContent(
     onShowBatteryStatusChanged: (Boolean) -> Unit,
     onToggleMediaPlayer: (Boolean) -> Unit,
     onToggleCalendarAgenda: (Boolean) -> Unit,
-    onToggleWeatherWidget: (Boolean) -> Unit = {}
+    onToggleWeatherWidget: (Boolean) -> Unit = {},
+    onTogglePhotoFrame: (Boolean) -> Unit = {},
+    onLaunchPhotoPicker: () -> Unit = {},
+    onRemoveAllPhotos: () -> Unit = {}
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -891,7 +953,33 @@ private fun SettingsContent(
         )
     }
 
-    // 8. Charging Awareness
+    // 8. Photo Frame
+    SettingsSection(title = "Photo Frame") {
+        SettingsToggleRow(
+            title = "Show photo frame",
+            subtitle = "Display personal photos as an ambient slideshow in widget stacks",
+            checked = preferences.showPhotoFrame,
+            onCheckedChange = onTogglePhotoFrame,
+            accentColor = accentColor
+        )
+
+        if (preferences.showPhotoFrame) {
+            HorizontalDivider(
+                color = StandByBorder.copy(alpha = 0.5f),
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            PhotoFrameSettingsControls(
+                photoCount = preferences.photoFrameUris.size,
+                accentColor = accentColor,
+                onChoosePhotos = onLaunchPhotoPicker,
+                onRemoveAllPhotos = onRemoveAllPhotos
+            )
+        }
+    }
+
+    // 9. Charging Awareness
     SettingsSection(title = "Charging Awareness") {
         SettingsToggleRow(
             title = "Show notification when charging",

@@ -246,3 +246,90 @@ fun SettingsToggleRow(
         )
     }
 }
+
+/**
+ * Settings controls for Photo Frame: displays selection count, choose/manage button,
+ * and remove all photos action.
+ */
+@Composable
+fun PhotoFrameSettingsControls(
+    photoCount: Int,
+    accentColor: Color,
+    onChoosePhotos: () -> Unit,
+    onRemoveAllPhotos: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        val countText = if (photoCount == 0) {
+            "No photos selected"
+        } else {
+            "$photoCount photo${if (photoCount == 1) "" else "s"} selected (up to 50)"
+        }
+
+        Text(
+            text = countText,
+            color = StandByTextMuted,
+            fontSize = 13.sp,
+            fontFamily = FontFamily.SansSerif
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                onClick = onChoosePhotos,
+                color = accentColor,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (photoCount == 0) "Choose Photos" else "Manage Photos",
+                        color = Color.Black,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            }
+
+            if (photoCount > 0) {
+                Surface(
+                    onClick = onRemoveAllPhotos,
+                    color = StandBySurface,
+                    border = BorderStroke(1.dp, Color(0xFFFF453A)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Remove All",
+                            color = Color(0xFFFF453A),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.SansSerif
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
