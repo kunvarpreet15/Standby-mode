@@ -7,7 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -94,6 +93,7 @@ fun SettingsScreen(
     onLaunchPhotoPicker: () -> Unit = {},
     onRemoveAllPhotos: () -> Unit = {},
     onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
+    onRevisitOnboarding: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -194,34 +194,21 @@ fun SettingsScreen(
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             val systemAllowed = manager?.areNotificationsEnabled() ?: false
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val hasPermission = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
 
-                if (!hasPermission) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else if (!systemAllowed) {
-                    explanationDialogTitle = "Notifications Disabled"
-                    explanationDialogMessage = "Notifications are disabled in your system settings. Please enable notifications for StandBy Mode in Android Settings to use this feature."
-                    showPermissionExplanationDialog = true
-                } else {
-                    onShowChargingNotificationChanged(true)
-                    if (ChargingNotificationManager.isDeviceCharging(context)) {
-                        ChargingNotificationManager.postChargingNotification(context)
-                    }
-                }
+            if (!hasPermission) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else if (!systemAllowed) {
+                explanationDialogTitle = "Notifications Disabled"
+                explanationDialogMessage = "Notifications are disabled in your system settings. Please enable notifications for StandBy Mode in Android Settings to use this feature."
+                showPermissionExplanationDialog = true
             } else {
-                if (!systemAllowed) {
-                    explanationDialogTitle = "Notifications Disabled"
-                    explanationDialogMessage = "Notifications are disabled in your system settings. Please enable notifications for StandBy Mode in Android Settings to use this feature."
-                    showPermissionExplanationDialog = true
-                } else {
-                    onShowChargingNotificationChanged(true)
-                    if (ChargingNotificationManager.isDeviceCharging(context)) {
-                        ChargingNotificationManager.postChargingNotification(context)
-                    }
+                onShowChargingNotificationChanged(true)
+                if (ChargingNotificationManager.isDeviceCharging(context)) {
+                    ChargingNotificationManager.postChargingNotification(context)
                 }
             }
         } else {
@@ -687,7 +674,8 @@ fun SettingsScreen(
                                 onTogglePhotoFrame = onTogglePhotoFrame,
                                 onLaunchPhotoPicker = onLaunchPhotoPicker,
                                 onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true },
-                                onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame
+                                onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
+                                onRevisitOnboarding = onRevisitOnboarding
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                         }
@@ -731,7 +719,8 @@ fun SettingsScreen(
                             onTogglePhotoFrame = onTogglePhotoFrame,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
                             onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true },
-                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame
+                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
+                            onRevisitOnboarding = onRevisitOnboarding
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -811,7 +800,8 @@ private fun SettingsContent(
     onTogglePhotoFrame: (Boolean) -> Unit = {},
     onLaunchPhotoPicker: () -> Unit = {},
     onRemoveAllPhotos: () -> Unit = {},
-    onOpenFullscreenPhotoFrame: (() -> Unit)? = null
+    onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
+    onRevisitOnboarding: () -> Unit = {}
 ) {
     // 1. Clock Face Selection
     SettingsSection(title = "Clock Face") {
@@ -1002,6 +992,16 @@ private fun SettingsContent(
             subtitle = "Enter StandBy Mode when charging horizontally; dismiss when unplugged or upright",
             checked = preferences.autoActivateOnChargeAndLandscape,
             onCheckedChange = onAutoActivateChanged,
+            accentColor = accentColor
+        )
+    }
+
+    // 10. Setup & Permissions Guide
+    SettingsSection(title = "Setup & Permissions Guide") {
+        SettingsClickableRow(
+            title = "Revisit Onboarding Walkthrough",
+            subtitle = "Review charging setup, screen rules, and optional feature permissions",
+            onClick = onRevisitOnboarding,
             accentColor = accentColor
         )
     }

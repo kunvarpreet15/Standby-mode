@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -65,6 +66,7 @@ import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
 import com.kunvarpreet.standbymode.core.media.MediaNotificationListenerService
 import com.kunvarpreet.standbymode.core.media.MediaSessionRepository
 import com.kunvarpreet.standbymode.core.media.MediaWidgetUiState
+import com.kunvarpreet.standbymode.core.onboarding.OnboardingPolicy
 import com.kunvarpreet.standbymode.core.photoframe.AsyncPhotoLoader
 import com.kunvarpreet.standbymode.core.photoframe.FaceCropAnalyzer
 import com.kunvarpreet.standbymode.core.photoframe.PhotoFrameLogic
@@ -85,6 +87,7 @@ import com.kunvarpreet.standbymode.ui.clock.RetroFlipClockView
 import com.kunvarpreet.standbymode.ui.display.PageDotsIndicator
 import com.kunvarpreet.standbymode.ui.duo.DuoLayoutScreen
 import com.kunvarpreet.standbymode.ui.media.MediaMiniWidget
+import com.kunvarpreet.standbymode.ui.onboarding.OnboardingScreen
 import com.kunvarpreet.standbymode.ui.photoframe.FullscreenPhotoFrameScreen
 import com.kunvarpreet.standbymode.ui.settings.SettingsButton
 import com.kunvarpreet.standbymode.ui.settings.SettingsScreen
@@ -97,7 +100,8 @@ import kotlinx.coroutines.launch
  */
 enum class AppScreen {
     CLOCK,
-    SETTINGS
+    SETTINGS,
+    ONBOARDING
 }
 
 class MainActivity : ComponentActivity() {
@@ -149,11 +153,25 @@ fun StandByAppShell(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val preferences by repository.preferencesFlow.collectAsState(
-        initial = UserClockPreferences()
+    val preferencesNullable by repository.preferencesFlow.collectAsState(
+        initial = null
     )
 
-    var currentScreen by rememberSaveable { mutableStateOf(AppScreen.CLOCK) }
+    if (preferencesNullable == null) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(StandByBackground)
+        )
+        return
+    }
+    val preferences = preferencesNullable!!
+
+    var currentScreen by rememberSaveable {
+        mutableStateOf(
+            if (preferences.isOnboardingCompleted) AppScreen.CLOCK else AppScreen.ONBOARDING
+        )
+    }
 
     // Hoist pager state across screen navigation so returning from Settings restores the viewed display space
     val pagerState = rememberPagerState(
@@ -325,7 +343,7 @@ fun StandByAppShell(
                 orientation = currentOrientation
             )
         ) {
-            if (currentScreen != AppScreen.SETTINGS) {
+            if (currentScreen != AppScreen.SETTINGS && currentScreen != AppScreen.ONBOARDING) {
                 currentScreen = AppScreen.CLOCK
             }
         }
@@ -656,7 +674,37 @@ fun StandByAppShell(
                         pagerState.animateScrollToPage(DisplaySpace.PHOTO_FRAME.pageIndex)
                     }
                 },
+                onRevisitOnboarding = { currentScreen = AppScreen.ONBOARDING },
                 onDismiss = { currentScreen = AppScreen.CLOCK },
+                modifier = modifier
+            )
+        }
+        AppScreen.ONBOARDING -> {
+            OnboardingScreen(
+                preferences = preferences,
+                onToggleAutoActivate = { enabled ->
+                    coroutineScope.launch {
+                        repository.updateAutoActivateOnChargeAndLandscape(enabled)
+                    }
+                },
+                onToggleKeepScreenAwake = { enabled ->
+                    coroutineScope.launch {
+                        repository.updateKeepScreenAwake(enabled)
+                    }
+                },
+                onCompleteOnboarding = {
+                    coroutineScope.launch {
+                        repository.updateOnboardingCompleted(true)
+                    }
+                    currentScreen = OnboardingPolicy.resolveExitScreen(
+                        wasPreviouslyCompleted = preferences.isOnboardingCompleted
+                    )
+                },
+                onDismiss = {
+                    currentScreen = OnboardingPolicy.resolveExitScreen(
+                        wasPreviouslyCompleted = preferences.isOnboardingCompleted
+                    )
+                },
                 modifier = modifier
             )
         }
@@ -770,7 +818,13 @@ fun FullscreenClockScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .offset(x = animatedX, y = animatedY)
+                            .offset {
+                                IntOffset(
+                                    x = animatedX.roundToPx(),
+                                    y=animatedY.roundToPx()
+                                )
+                            }
+//                                (x = animatedX, y = animatedY)
                     ) {
                         DuoLayoutScreen(
                             preferences = preferences,
@@ -810,7 +864,13 @@ fun FullscreenClockScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .offset(x = animatedX, y = animatedY)
+                            .offset {
+                                IntOffset(
+                                    x = animatedX.roundToPx(),
+                                    y=animatedY.roundToPx()
+                                )
+                            }
+//                                (x = animatedX, y = animatedY)
                     ) {
                         FullscreenClockPage(
                             preferences = preferences,

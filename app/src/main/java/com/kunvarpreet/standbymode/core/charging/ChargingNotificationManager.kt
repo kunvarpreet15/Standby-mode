@@ -10,7 +10,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.BatteryManager
-import android.os.Build
 import androidx.core.content.ContextCompat
 import com.kunvarpreet.standbymode.MainActivity
 import com.kunvarpreet.standbymode.R
@@ -105,15 +104,13 @@ object ChargingNotificationManager {
             return false
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val permissionStatus = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            )
-            if (permissionStatus != PackageManager.PERMISSION_GRANTED) {
-                android.util.Log.d("ChargingNotificationManager", "POST_NOTIFICATIONS permission not granted")
-                return false
-            }
+        val permissionStatus = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        )
+        if (permissionStatus != PackageManager.PERMISSION_GRANTED) {
+            android.util.Log.d("ChargingNotificationManager", "POST_NOTIFICATIONS permission not granted")
+            return false
         }
 
         val channel = manager.getNotificationChannel(CHANNEL_ID)

@@ -103,7 +103,7 @@ object AutoActivationPolicy {
         if (launchSource != LaunchSource.AUTO_ACTIVATED) {
             return false
         }
-        if (currentScreen == AppScreen.SETTINGS) {
+        if (currentScreen == AppScreen.SETTINGS || currentScreen == AppScreen.ONBOARDING) {
             return false
         }
         return !isCharging || orientation == DeviceOrientation.PORTRAIT

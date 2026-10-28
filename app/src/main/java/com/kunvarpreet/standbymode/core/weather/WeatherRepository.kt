@@ -6,12 +6,8 @@ import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
-import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Build
-import android.os.Bundle
 import android.os.CancellationSignal
-import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineDispatcher
@@ -35,6 +31,7 @@ import java.util.Locale
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Repository responsible for:
@@ -189,65 +186,29 @@ class WeatherRepository(
         }
 
         // 2. Request a one-shot current location with a 10s timeout
-        return withTimeoutOrNull(10_000L) {
+        return withTimeoutOrNull(10_000L.milliseconds) {
             suspendCancellableCoroutine { continuation ->
                 val cancellationSignal = CancellationSignal()
                 continuation.invokeOnCancellation {
                     cancellationSignal.cancel()
                 }
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val directExecutor = Executor { it.run() }
-                    try {
-                        locationManager.getCurrentLocation(
-                            LocationManager.NETWORK_PROVIDER,
-                            cancellationSignal,
-                            directExecutor
-                        ) { location ->
-                            if (continuation.isActive) {
-                                continuation.resume(location)
-                            }
+                val directExecutor = Executor { it.run() }
+                try {
+                    locationManager.getCurrentLocation(
+                        LocationManager.NETWORK_PROVIDER,
+                        cancellationSignal,
+                        directExecutor
+                    ) { location ->
+                        if (continuation.isActive) {
+                            continuation.resume(location)
                         }
-                    } catch (e: SecurityException) {
-                        if (continuation.isActive) continuation.resume(null)
-                    } catch (e: Exception) {
-                        // Network provider might not be available; try passive or return null
-                        if (continuation.isActive) continuation.resume(null)
                     }
-                } else {
-                    // Pre-Android 11 fallback
-                    val listener = object : LocationListener {
-                        override fun onLocationChanged(location: Location) {
-                            try {
-                                locationManager.removeUpdates(this)
-                            } catch (ignored: Exception) {}
-                            if (continuation.isActive) {
-                                continuation.resume(location)
-                            }
-                        }
-                        @Deprecated("Deprecated in Java")
-                        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-                        override fun onProviderEnabled(provider: String) {}
-                        override fun onProviderDisabled(provider: String) {}
-                    }
-
-                    try {
-                        @Suppress("DEPRECATION")
-                        locationManager.requestSingleUpdate(
-                            LocationManager.NETWORK_PROVIDER,
-                            listener,
-                            Looper.getMainLooper()
-                        )
-                        continuation.invokeOnCancellation {
-                            try {
-                                locationManager.removeUpdates(listener)
-                            } catch (ignored: Exception) {}
-                        }
-                    } catch (e: SecurityException) {
-                        if (continuation.isActive) continuation.resume(null)
-                    } catch (e: Exception) {
-                        if (continuation.isActive) continuation.resume(null)
-                    }
+                } catch (e: SecurityException) {
+                    if (continuation.isActive) continuation.resume(null)
+                } catch (e: Exception) {
+                    // Network provider might not be available; try passive or return null
+                    if (continuation.isActive) continuation.resume(null)
                 }
             }
         }
@@ -260,28 +221,21 @@ class WeatherRepository(
     private suspend fun resolveLocality(latitude: Double, longitude: Double): String {
         return try {
             val geocoder = Geocoder(context, Locale.getDefault())
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                suspendCancellableCoroutine { continuation ->
-                    geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
-                        override fun onGeocode(addresses: MutableList<Address>) {
-                            val addr = addresses.firstOrNull()
-                            val locality = addr?.locality ?: addr?.subAdminArea ?: addr?.adminArea ?: "Local weather"
-                            if (continuation.isActive) {
-                                continuation.resume(locality)
-                            }
+            suspendCancellableCoroutine { continuation ->
+                geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<Address>) {
+                        val addr = addresses.firstOrNull()
+                        val locality = addr?.locality ?: addr?.subAdminArea ?: addr?.adminArea ?: "Local weather"
+                        if (continuation.isActive) {
+                            continuation.resume(locality)
                         }
-                        override fun onError(errorMessage: String?) {
-                            if (continuation.isActive) {
-                                continuation.resume("Local weather")
-                            }
+                    }
+                    override fun onError(errorMessage: String?) {
+                        if (continuation.isActive) {
+                            continuation.resume("Local weather")
                         }
-                    })
-                }
-            } else {
-                @Suppress("DEPRECATION")
-                val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-                val addr = addresses?.firstOrNull()
-                addr?.locality ?: addr?.subAdminArea ?: addr?.adminArea ?: "Local weather"
+                    }
+                })
             }
         } catch (e: Exception) {
             Log.w(tag, "Geocoder lookup failed, using fallback locality", e)

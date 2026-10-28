@@ -31,6 +31,7 @@ class UserClockPreferencesTest {
         assertEquals(false, prefs.showPhotoFrame)
         assertEquals(emptyList<String>(), prefs.photoFrameUris)
         assertEquals(false, prefs.autoActivateOnChargeAndLandscape)
+        assertEquals(false, prefs.isOnboardingCompleted)
     }
 
     @Test
@@ -52,6 +53,29 @@ class UserClockPreferencesTest {
         assertEquals(initial.showCalendarAgenda, enabled.showCalendarAgenda)
         assertEquals(initial.showWeatherWidget, enabled.showWeatherWidget)
         assertEquals(initial.showPhotoFrame, enabled.showPhotoFrame)
+        assertEquals(initial.isOnboardingCompleted, enabled.isOnboardingCompleted)
+    }
+
+    @Test
+    fun onboardingCompleted_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences()
+        val completed = initial.copy(isOnboardingCompleted = true)
+        assertEquals(true, completed.isOnboardingCompleted)
+        assertEquals(initial.clockFace, completed.clockFace)
+        assertEquals(initial.is24Hour, completed.is24Hour)
+        assertEquals(initial.showSeconds, completed.showSeconds)
+        assertEquals(initial.showDate, completed.showDate)
+        assertEquals(initial.accentColor, completed.accentColor)
+        assertEquals(initial.isNightModeEnabled, completed.isNightModeEnabled)
+        assertEquals(initial.showChargingNotification, completed.showChargingNotification)
+        assertEquals(initial.isBurnInProtectionEnabled, completed.isBurnInProtectionEnabled)
+        assertEquals(initial.keepScreenAwake, completed.keepScreenAwake)
+        assertEquals(initial.showBatteryStatus, completed.showBatteryStatus)
+        assertEquals(initial.showMediaPlayer, completed.showMediaPlayer)
+        assertEquals(initial.showCalendarAgenda, completed.showCalendarAgenda)
+        assertEquals(initial.showWeatherWidget, completed.showWeatherWidget)
+        assertEquals(initial.showPhotoFrame, completed.showPhotoFrame)
+        assertEquals(initial.autoActivateOnChargeAndLandscape, completed.autoActivateOnChargeAndLandscape)
     }
 
     @Test

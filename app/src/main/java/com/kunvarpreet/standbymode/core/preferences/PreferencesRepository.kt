@@ -38,6 +38,7 @@ class PreferencesRepository(private val context: Context) {
         val SHOW_PHOTO_FRAME = booleanPreferencesKey("show_photo_frame")
         val PHOTO_FRAME_URIS = stringPreferencesKey("photo_frame_uris")
         val AUTO_ACTIVATE_ON_CHARGE_AND_LANDSCAPE = booleanPreferencesKey("auto_activate_on_charge_and_landscape")
+        val IS_ONBOARDING_COMPLETED = booleanPreferencesKey("is_onboarding_completed")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -66,6 +67,7 @@ class PreferencesRepository(private val context: Context) {
             val rawPhotoUris = preferences[PreferencesKeys.PHOTO_FRAME_URIS]
             val photoFrameUris = PhotoFrameLogic.deserializeUriList(rawPhotoUris)
             val autoActivateOnChargeAndLandscape = preferences[PreferencesKeys.AUTO_ACTIVATE_ON_CHARGE_AND_LANDSCAPE] ?: false
+            val isOnboardingCompleted = preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] ?: false
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -83,7 +85,8 @@ class PreferencesRepository(private val context: Context) {
                 showWeatherWidget = showWeatherWidget,
                 showPhotoFrame = showPhotoFrame,
                 photoFrameUris = photoFrameUris,
-                autoActivateOnChargeAndLandscape = autoActivateOnChargeAndLandscape
+                autoActivateOnChargeAndLandscape = autoActivateOnChargeAndLandscape,
+                isOnboardingCompleted = isOnboardingCompleted
             )
         }
 
@@ -189,6 +192,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateAutoActivateOnChargeAndLandscape(enabled: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.AUTO_ACTIVATE_ON_CHARGE_AND_LANDSCAPE] = enabled
+        }
+    }
+
+    suspend fun updateOnboardingCompleted(completed: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] = completed
         }
     }
 }

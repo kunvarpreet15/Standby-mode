@@ -248,6 +248,54 @@ fun SettingsToggleRow(
 }
 
 /**
+ * Clickable row navigation item within a settings card.
+ */
+@Composable
+fun SettingsClickableRow(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String? = null,
+    onClick: () -> Unit,
+    accentColor: Color
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = StandByTextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = FontFamily.SansSerif
+            )
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    color = StandByTextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            }
+        }
+        Text(
+            text = "View",
+            color = accentColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+/**
  * Settings controls for Photo Frame: displays selection count, choose/manage button,
  * and remove all photos action.
  */
