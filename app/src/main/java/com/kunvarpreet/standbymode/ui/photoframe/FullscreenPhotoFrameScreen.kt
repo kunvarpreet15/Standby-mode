@@ -44,6 +44,7 @@ import com.kunvarpreet.standbymode.ui.theme.StandByNightTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Dedicated fullscreen ambient photo frame slideshow experience.
@@ -105,7 +106,7 @@ fun FullscreenPhotoFrameScreen(
     LaunchedEffect(isSlideshowActive, validCount) {
         if (isSlideshowActive && validCount > 1) {
             while (isActive) {
-                delay(PhotoFrameLogic.SLIDESHOW_INTERVAL_MILLIS)
+                delay(PhotoFrameLogic.SLIDESHOW_INTERVAL_MILLIS.milliseconds)
                 currentIndex = PhotoFrameLogic.nextIndex(currentIndex, validCount)
             }
         }

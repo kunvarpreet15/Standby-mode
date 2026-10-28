@@ -59,6 +59,7 @@ import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
 import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Compact built-in Photo Frame widget for Duo Layout panes.
@@ -98,7 +99,7 @@ fun PhotoFrameWidget(
     LaunchedEffect(isSlideshowActive, validCount) {
         if (isSlideshowActive && validCount > 1) {
             while (isActive) {
-                delay(PhotoFrameLogic.SLIDESHOW_INTERVAL_MILLIS)
+                delay(PhotoFrameLogic.SLIDESHOW_INTERVAL_MILLIS.milliseconds)
                 currentIndex = PhotoFrameLogic.nextIndex(currentIndex, validCount)
             }
         }
