@@ -105,5 +105,6 @@ data class UserClockPreferences(
     val showCalendarAgenda: Boolean = false,
     val showWeatherWidget: Boolean = false,
     val showPhotoFrame: Boolean = false,
-    val photoFrameUris: List<String> = emptyList()
+    val photoFrameUris: List<String> = emptyList(),
+    val autoActivateOnChargeAndLandscape: Boolean = false
 )

@@ -108,11 +108,12 @@ object DuoWidgetPolicy {
     /**
      * Evaluates whether battery broadcast observation is needed.
      * True if the small battery pill is enabled, keep screen awake is enabled (requiring power status),
-     * or if either Duo pane is displaying the dedicated battery widget.
+     * auto-activation on charge is enabled, or if either Duo pane is displaying the dedicated battery widget.
      */
     fun isBatteryObservationNeeded(
         showBatteryStatusPref: Boolean,
         keepScreenAwakePref: Boolean = false,
+        autoActivatePref: Boolean = false,
         currentScreen: AppScreen,
         isActivityForeground: Boolean,
         displaySpace: DisplaySpace,
@@ -122,7 +123,7 @@ object DuoWidgetPolicy {
         if (currentScreen != AppScreen.CLOCK || !isActivityForeground) {
             return false
         }
-        if (showBatteryStatusPref || keepScreenAwakePref) {
+        if (showBatteryStatusPref || keepScreenAwakePref || autoActivatePref) {
             return true
         }
         return displaySpace == DisplaySpace.DUO_LAYOUT && (

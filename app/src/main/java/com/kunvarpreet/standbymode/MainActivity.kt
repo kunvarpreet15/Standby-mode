@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -50,6 +51,9 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.kunvarpreet.standbymode.core.activation.AutoActivationPolicy
+import com.kunvarpreet.standbymode.core.activation.DeviceOrientation
+import com.kunvarpreet.standbymode.core.activation.LaunchSource
 import com.kunvarpreet.standbymode.core.battery.BatteryState
 import com.kunvarpreet.standbymode.core.battery.rememberBatteryState
 import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
@@ -112,6 +116,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     override fun onStart() {
         super.onStart()
         ChargingNotificationManager.isAppInForeground = true
@@ -154,10 +163,23 @@ fun StandByAppShell(
     }
 
     val context = LocalContext.current
-    val window = remember(context) {
+    val activity = remember(context) {
         generateSequence(context) { (it as? ContextWrapper)?.baseContext }
             .filterIsInstance<Activity>()
-            .firstOrNull()?.window
+            .firstOrNull()
+    }
+    val window = activity?.window
+
+    var launchSource by rememberSaveable {
+        val isAuto = activity?.intent?.getBooleanExtra(
+            AutoActivationPolicy.EXTRA_AUTO_ACTIVATED, false
+        ) ?: false
+        mutableStateOf(if (isAuto) LaunchSource.AUTO_ACTIVATED else LaunchSource.MANUAL)
+    }
+
+    val configuration = LocalConfiguration.current
+    val currentOrientation = remember(configuration.orientation) {
+        DeviceOrientation.fromConfiguration(configuration.orientation)
     }
 
     val mediaSessionRepository = remember(context) {
@@ -267,6 +289,7 @@ fun StandByAppShell(
     val shouldObserveBattery = DuoWidgetPolicy.isBatteryObservationNeeded(
         showBatteryStatusPref = preferences.showBatteryStatus,
         keepScreenAwakePref = preferences.keepScreenAwake,
+        autoActivatePref = preferences.autoActivateOnChargeAndLandscape,
         currentScreen = currentScreen,
         isActivityForeground = isActivityForeground,
         displaySpace = currentDisplaySpace,
@@ -279,6 +302,52 @@ fun StandByAppShell(
         isClockScreen = currentScreen == AppScreen.CLOCK,
         isActivityForeground = isActivityForeground
     )
+
+    LaunchedEffect(isActivityForeground) {
+        if (isActivityForeground) {
+            val currentIntent = activity?.intent
+            if (currentIntent?.getBooleanExtra(AutoActivationPolicy.EXTRA_AUTO_ACTIVATED, false) == true) {
+                launchSource = LaunchSource.AUTO_ACTIVATED
+                currentIntent.removeExtra(AutoActivationPolicy.EXTRA_AUTO_ACTIVATED)
+            }
+        }
+    }
+
+    // Auto-activation when device is charging and in landscape while app is in foreground
+    LaunchedEffect(
+        preferences.autoActivateOnChargeAndLandscape,
+        batteryState.isCharging,
+        currentOrientation
+    ) {
+        if (AutoActivationPolicy.canAutoActivate(
+                isAutoActivationEnabled = preferences.autoActivateOnChargeAndLandscape,
+                isCharging = batteryState.isCharging,
+                orientation = currentOrientation
+            )
+        ) {
+            if (currentScreen != AppScreen.SETTINGS) {
+                currentScreen = AppScreen.CLOCK
+            }
+        }
+    }
+
+    // Automatic dismissal of auto-activated session when unplugged or rotated to portrait
+    LaunchedEffect(
+        launchSource,
+        batteryState.isCharging,
+        currentOrientation,
+        currentScreen
+    ) {
+        if (AutoActivationPolicy.shouldDismissAutoSession(
+                launchSource = launchSource,
+                isCharging = batteryState.isCharging,
+                orientation = currentOrientation,
+                currentScreen = currentScreen
+            )
+        ) {
+            activity?.finish()
+        }
+    }
 
     val shouldKeepScreenOn = remember(
         preferences.keepScreenAwake,
@@ -554,6 +623,9 @@ fun StandByAppShell(
                 },
                 onShowChargingNotificationChanged = { showChargingNotification ->
                     coroutineScope.launch { repository.updateShowChargingNotification(showChargingNotification) }
+                },
+                onAutoActivateChanged = { autoActivate ->
+                    coroutineScope.launch { repository.updateAutoActivateOnChargeAndLandscape(autoActivate) }
                 },
                 onBurnInProtectionChanged = { isBurnInProtectionEnabled ->
                     coroutineScope.launch { repository.updateBurnInProtection(isBurnInProtectionEnabled) }

@@ -914,4 +914,35 @@ class DuoWidgetPolicyTest {
             )
         )
     }
+
+    @Test
+    fun batteryObserverActivation_whenAutoActivateEnabled() {
+        // If autoActivatePref is true, observation is active whenever in foreground on clock
+        assertTrue(
+            DuoWidgetPolicy.isBatteryObservationNeeded(
+                showBatteryStatusPref = false,
+                keepScreenAwakePref = false,
+                autoActivatePref = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.FULLSCREEN_CLOCK,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+
+        // Inactive if in background even with autoActivatePref
+        assertFalse(
+            DuoWidgetPolicy.isBatteryObservationNeeded(
+                showBatteryStatusPref = false,
+                keepScreenAwakePref = false,
+                autoActivatePref = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = false,
+                displaySpace = DisplaySpace.FULLSCREEN_CLOCK,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+    }
 }

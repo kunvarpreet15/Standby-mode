@@ -83,6 +83,7 @@ fun SettingsScreen(
     onAccentColorChanged: (AccentColorOption) -> Unit,
     onNightModeChanged: (Boolean) -> Unit,
     onShowChargingNotificationChanged: (Boolean) -> Unit,
+    onAutoActivateChanged: (Boolean) -> Unit = {},
     onBurnInProtectionChanged: (Boolean) -> Unit = {},
     onKeepScreenAwakeChanged: (Boolean) -> Unit = {},
     onShowBatteryStatusChanged: (Boolean) -> Unit = {},
@@ -676,6 +677,7 @@ fun SettingsScreen(
                                 onAccentColorChanged = onAccentColorChanged,
                                 onNightModeChanged = onNightModeChanged,
                                 onToggleChargingNotification = onToggleChargingNotification,
+                                onAutoActivateChanged = onAutoActivateChanged,
                                 onBurnInProtectionChanged = onBurnInProtectionChanged,
                                 onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                                 onShowBatteryStatusChanged = onShowBatteryStatusChanged,
@@ -719,6 +721,7 @@ fun SettingsScreen(
                             onAccentColorChanged = onAccentColorChanged,
                             onNightModeChanged = onNightModeChanged,
                             onToggleChargingNotification = onToggleChargingNotification,
+                            onAutoActivateChanged = onAutoActivateChanged,
                             onBurnInProtectionChanged = onBurnInProtectionChanged,
                             onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                             onShowBatteryStatusChanged = onShowBatteryStatusChanged,
@@ -798,6 +801,7 @@ private fun SettingsContent(
     onAccentColorChanged: (AccentColorOption) -> Unit,
     onNightModeChanged: (Boolean) -> Unit,
     onToggleChargingNotification: (Boolean) -> Unit,
+    onAutoActivateChanged: (Boolean) -> Unit = {},
     onBurnInProtectionChanged: (Boolean) -> Unit,
     onKeepScreenAwakeChanged: (Boolean) -> Unit,
     onShowBatteryStatusChanged: (Boolean) -> Unit,
@@ -991,6 +995,13 @@ private fun SettingsContent(
             subtitle = "Display a notification to open StandBy Mode when power is connected",
             checked = preferences.showChargingNotification,
             onCheckedChange = onToggleChargingNotification,
+            accentColor = accentColor
+        )
+        SettingsToggleRow(
+            title = "Auto-activate in landscape while charging",
+            subtitle = "Enter StandBy Mode when charging horizontally; dismiss when unplugged or upright",
+            checked = preferences.autoActivateOnChargeAndLandscape,
+            onCheckedChange = onAutoActivateChanged,
             accentColor = accentColor
         )
     }

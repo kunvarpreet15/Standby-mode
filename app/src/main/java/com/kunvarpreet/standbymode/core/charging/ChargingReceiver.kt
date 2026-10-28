@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.kunvarpreet.standbymode.core.activation.ActivationAction
+import com.kunvarpreet.standbymode.core.activation.AutoActivationPolicy
 import com.kunvarpreet.standbymode.core.preferences.PreferencesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,14 +33,16 @@ class ChargingReceiver : BroadcastReceiver() {
                         val repository = PreferencesRepository(context.applicationContext)
                         val preferences = repository.preferencesFlow.first()
                         val isForeground = ChargingNotificationManager.isAppInForeground
-                        Log.d("ChargingReceiver", "showChargingNotification=${preferences.showChargingNotification}, isForeground=$isForeground")
+                        val canPost = ChargingNotificationManager.canPostNotifications(context.applicationContext)
+                        val action = AutoActivationPolicy.evaluateBackgroundChargingAction(
+                            isAutoActivationEnabled = preferences.autoActivateOnChargeAndLandscape,
+                            isChargingNotificationEnabled = preferences.showChargingNotification,
+                            isAppInForeground = isForeground,
+                            canPostNotifications = canPost
+                        )
+                        Log.d("ChargingReceiver", "Evaluated background action: $action, isForeground=$isForeground")
 
-                        if (ChargingNotificationPolicy.shouldShowChargingNotification(
-                                isFeatureEnabled = preferences.showChargingNotification,
-                                isCharging = true,
-                                isAppInForeground = isForeground
-                            )
-                        ) {
+                        if (action == ActivationAction.POST_CHARGING_NOTIFICATION) {
                             Log.d("ChargingReceiver", "Posting charging notification")
                             ChargingNotificationManager.postChargingNotification(context.applicationContext)
                         } else {

@@ -14,6 +14,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.kunvarpreet.standbymode.MainActivity
 import com.kunvarpreet.standbymode.R
+import com.kunvarpreet.standbymode.core.activation.AutoActivationPolicy
 
 /**
  * Pure policy logic determining notification creation and cancellation.
@@ -153,6 +154,7 @@ object ChargingNotificationManager {
             action = Intent.ACTION_MAIN
             addCategory(Intent.CATEGORY_LAUNCHER)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(AutoActivationPolicy.EXTRA_AUTO_ACTIVATED, true)
         }
 
         val pendingIntent = PendingIntent.getActivity(
