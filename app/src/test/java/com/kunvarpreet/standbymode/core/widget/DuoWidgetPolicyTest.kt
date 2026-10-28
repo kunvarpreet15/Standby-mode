@@ -818,4 +818,100 @@ class DuoWidgetPolicyTest {
             )
         )
     }
+
+    @Test
+    fun isPanePhotoFrameVisible_adheresToVisibilityContract() {
+        // True only when preference is enabled, activity foregrounded, in CLOCK, Duo Layout, and pane widget is PHOTO_FRAME
+        assertTrue(
+            DuoWidgetPolicy.isPanePhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                paneWidget = DuoWidgetType.PHOTO_FRAME
+            )
+        )
+
+        // Inactive if pane widget is not PHOTO_FRAME
+        assertFalse(
+            DuoWidgetPolicy.isPanePhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                paneWidget = DuoWidgetType.CLOCK
+            )
+        )
+
+        // Inactive if not in Duo Layout (e.g. in Fullscreen Clock or Photo Frame)
+        assertFalse(
+            DuoWidgetPolicy.isPanePhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.FULLSCREEN_CLOCK,
+                paneWidget = DuoWidgetType.PHOTO_FRAME
+            )
+        )
+        assertFalse(
+            DuoWidgetPolicy.isPanePhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.PHOTO_FRAME,
+                paneWidget = DuoWidgetType.PHOTO_FRAME
+            )
+        )
+
+        // Inactive if activity in background
+        assertFalse(
+            DuoWidgetPolicy.isPanePhotoFrameVisible(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = false,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                paneWidget = DuoWidgetType.PHOTO_FRAME
+            )
+        )
+
+        // Inactive if preference disabled
+        assertFalse(
+            DuoWidgetPolicy.isPanePhotoFrameVisible(
+                isPreferenceEnabled = false,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.DUO_LAYOUT,
+                paneWidget = DuoWidgetType.PHOTO_FRAME
+            )
+        )
+    }
+
+    @Test
+    fun batteryObserverActivation_whenKeepScreenAwakeEnabled() {
+        // If keepScreenAwake is true, observation is needed even if battery widget is not shown
+        assertTrue(
+            DuoWidgetPolicy.isBatteryObservationNeeded(
+                showBatteryStatusPref = false,
+                keepScreenAwakePref = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.FULLSCREEN_CLOCK,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+
+        // If keepScreenAwake is false and battery widget not shown -> false
+        assertFalse(
+            DuoWidgetPolicy.isBatteryObservationNeeded(
+                showBatteryStatusPref = false,
+                keepScreenAwakePref = false,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                displaySpace = DisplaySpace.FULLSCREEN_CLOCK,
+                leftPaneWidget = DuoWidgetType.CLOCK,
+                rightPaneWidget = DuoWidgetType.MEDIA
+            )
+        )
+    }
 }

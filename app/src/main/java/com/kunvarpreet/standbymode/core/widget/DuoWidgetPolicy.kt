@@ -107,10 +107,12 @@ object DuoWidgetPolicy {
 
     /**
      * Evaluates whether battery broadcast observation is needed.
-     * True if the small battery pill is enabled or if either Duo pane is displaying the dedicated battery widget.
+     * True if the small battery pill is enabled, keep screen awake is enabled (requiring power status),
+     * or if either Duo pane is displaying the dedicated battery widget.
      */
     fun isBatteryObservationNeeded(
         showBatteryStatusPref: Boolean,
+        keepScreenAwakePref: Boolean = false,
         currentScreen: AppScreen,
         isActivityForeground: Boolean,
         displaySpace: DisplaySpace,
@@ -120,7 +122,7 @@ object DuoWidgetPolicy {
         if (currentScreen != AppScreen.CLOCK || !isActivityForeground) {
             return false
         }
-        if (showBatteryStatusPref) {
+        if (showBatteryStatusPref || keepScreenAwakePref) {
             return true
         }
         return displaySpace == DisplaySpace.DUO_LAYOUT && (
@@ -170,7 +172,7 @@ object DuoWidgetPolicy {
     }
 
     /**
-     * Evaluates whether the Photo Frame widget is actively visible on the user's screen.
+     * Evaluates whether the Photo Frame widget is actively visible on the user's screen across any pane or space.
      * Slideshow intervals and image decoding are active only when this returns true.
      */
     fun isPhotoFrameVisible(
@@ -184,9 +186,6 @@ object DuoWidgetPolicy {
         if (!isPreferenceEnabled || !isActivityForeground) {
             return false
         }
-        if (currentScreen == AppScreen.FULLSCREEN_PHOTO_FRAME) {
-            return true
-        }
         if (currentScreen != AppScreen.CLOCK) {
             return false
         }
@@ -197,5 +196,23 @@ object DuoWidgetPolicy {
             }
             DisplaySpace.FULLSCREEN_CLOCK -> false
         }
+    }
+
+    /**
+     * Evaluates whether a specific Duo Layout pane's Photo Frame widget is actively visible.
+     * Guaranteed to return true only when Photo Frame is enabled, the activity is in the foreground,
+     * Duo Layout is the active display space, and the specified pane currently hosts PHOTO_FRAME.
+     */
+    fun isPanePhotoFrameVisible(
+        isPreferenceEnabled: Boolean,
+        currentScreen: AppScreen,
+        isActivityForeground: Boolean,
+        displaySpace: DisplaySpace,
+        paneWidget: DuoWidgetType
+    ): Boolean {
+        if (!isPreferenceEnabled || !isActivityForeground || currentScreen != AppScreen.CLOCK) {
+            return false
+        }
+        return displaySpace == DisplaySpace.DUO_LAYOUT && paneWidget == DuoWidgetType.PHOTO_FRAME
     }
 }

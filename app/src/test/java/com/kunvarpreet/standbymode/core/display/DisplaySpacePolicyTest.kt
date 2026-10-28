@@ -140,13 +140,24 @@ class DisplaySpacePolicyTest {
 
     @Test
     fun keepScreenAwakePolicy_appliesToAmbientDisplayRegardlessOfDisplaySpace() {
-        // When in AppScreen.CLOCK (which encompasses DUO_LAYOUT and FULLSCREEN_CLOCK),
-        // keep screen awake is enabled if preference is true and activity is foregrounded.
+        // When in AppScreen.CLOCK (which encompasses DUO_LAYOUT, FULLSCREEN_CLOCK, and PHOTO_FRAME),
+        // keep screen awake is enabled if preference is true, activity is foregrounded, and device is charging.
         assertTrue(
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = true,
                 currentScreen = AppScreen.CLOCK,
-                isActivityForeground = true
+                isActivityForeground = true,
+                isCharging = true
+            )
+        )
+
+        // Unplugged device clears stay-awake
+        assertFalse(
+            KeepScreenAwakePolicy.shouldKeepScreenOn(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                isCharging = false
             )
         )
 
@@ -155,7 +166,8 @@ class DisplaySpacePolicyTest {
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = false,
                 currentScreen = AppScreen.CLOCK,
-                isActivityForeground = true
+                isActivityForeground = true,
+                isCharging = true
             )
         )
 
@@ -164,7 +176,8 @@ class DisplaySpacePolicyTest {
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = true,
                 currentScreen = AppScreen.SETTINGS,
-                isActivityForeground = true
+                isActivityForeground = true,
+                isCharging = true
             )
         )
 
@@ -173,7 +186,8 @@ class DisplaySpacePolicyTest {
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = true,
                 currentScreen = AppScreen.CLOCK,
-                isActivityForeground = false
+                isActivityForeground = false,
+                isCharging = true
             )
         )
     }

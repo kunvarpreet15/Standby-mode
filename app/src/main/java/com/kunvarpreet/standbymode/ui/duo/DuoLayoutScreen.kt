@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kunvarpreet.standbymode.core.battery.BatteryState
 import com.kunvarpreet.standbymode.core.calendar.CalendarAgendaUiState
+import com.kunvarpreet.standbymode.core.display.DisplaySpace
 import com.kunvarpreet.standbymode.core.media.MediaWidgetUiState
 import com.kunvarpreet.standbymode.core.preferences.ClockFaceType
 import com.kunvarpreet.standbymode.core.preferences.ClockThemePalette
@@ -73,6 +74,8 @@ fun DuoLayoutScreen(
     mediaWidgetUiState: MediaWidgetUiState,
     calendarUiState: CalendarAgendaUiState = CalendarAgendaUiState.Loading,
     weatherUiState: WeatherUiState = WeatherUiState.Loading,
+    isActivityForeground: Boolean = true,
+    isDuoLayoutVisible: Boolean = true,
     leftPaneWidget: DuoWidgetType = DuoWidgetType.CLOCK,
     rightPaneWidget: DuoWidgetType = if (preferences.showMediaPlayer) DuoWidgetType.MEDIA else DuoWidgetType.BATTERY_STATUS,
     onLeftPaneWidgetChanged: (DuoWidgetType) -> Unit = {},
@@ -93,6 +96,21 @@ fun DuoLayoutScreen(
     val palette = ClockThemePalette.resolve(
         isNightMode = preferences.isNightModeEnabled,
         selectedAccent = preferences.accentColor
+    )
+
+    val isLeftPanePhotoFrameActive = DuoWidgetPolicy.isPanePhotoFrameVisible(
+        isPreferenceEnabled = preferences.showPhotoFrame,
+        currentScreen = com.kunvarpreet.standbymode.AppScreen.CLOCK,
+        isActivityForeground = isActivityForeground,
+        displaySpace = if (isDuoLayoutVisible) DisplaySpace.DUO_LAYOUT else DisplaySpace.FULLSCREEN_CLOCK,
+        paneWidget = leftPaneWidget
+    )
+    val isRightPanePhotoFrameActive = DuoWidgetPolicy.isPanePhotoFrameVisible(
+        isPreferenceEnabled = preferences.showPhotoFrame,
+        currentScreen = com.kunvarpreet.standbymode.AppScreen.CLOCK,
+        isActivityForeground = isActivityForeground,
+        displaySpace = if (isDuoLayoutVisible) DisplaySpace.DUO_LAYOUT else DisplaySpace.FULLSCREEN_CLOCK,
+        paneWidget = rightPaneWidget
     )
 
     val availableLeftWidgets = DuoWidgetPolicy.getAvailableWidgets(
@@ -159,7 +177,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
-                            isSlideshowActive = leftPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
+                            isSlideshowActive = isLeftPanePhotoFrameActive && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -211,7 +229,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
-                            isSlideshowActive = rightPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
+                            isSlideshowActive = isRightPanePhotoFrameActive && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -264,7 +282,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
-                            isSlideshowActive = leftPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
+                            isSlideshowActive = isLeftPanePhotoFrameActive && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,
@@ -316,7 +334,7 @@ fun DuoLayoutScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
-                            isSlideshowActive = rightPaneWidget == DuoWidgetType.PHOTO_FRAME && widgetType == DuoWidgetType.PHOTO_FRAME,
+                            isSlideshowActive = isRightPanePhotoFrameActive && widgetType == DuoWidgetType.PHOTO_FRAME,
                             onMediaPlayPause = onMediaPlayPause,
                             onMediaPrevious = onMediaPrevious,
                             onMediaNext = onMediaNext,

@@ -93,8 +93,7 @@ import kotlinx.coroutines.launch
  */
 enum class AppScreen {
     CLOCK,
-    SETTINGS,
-    FULLSCREEN_PHOTO_FRAME
+    SETTINGS
 }
 
 class MainActivity : ComponentActivity() {
@@ -203,24 +202,6 @@ fun StandByAppShell(
         }
     }
 
-    val shouldKeepScreenOn = remember(preferences.keepScreenAwake, currentScreen, isActivityForeground) {
-        KeepScreenAwakePolicy.shouldKeepScreenOn(
-            isPreferenceEnabled = preferences.keepScreenAwake,
-            currentScreen = currentScreen,
-            isActivityForeground = isActivityForeground
-        )
-    }
-
-    LaunchedEffect(shouldKeepScreenOn, window) {
-        if (window != null) {
-            if (shouldKeepScreenOn) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            } else {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
-        }
-    }
-
     DisposableEffect(window) {
         onDispose {
             window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -285,6 +266,7 @@ fun StandByAppShell(
 
     val shouldObserveBattery = DuoWidgetPolicy.isBatteryObservationNeeded(
         showBatteryStatusPref = preferences.showBatteryStatus,
+        keepScreenAwakePref = preferences.keepScreenAwake,
         currentScreen = currentScreen,
         isActivityForeground = isActivityForeground,
         displaySpace = currentDisplaySpace,
@@ -297,6 +279,30 @@ fun StandByAppShell(
         isClockScreen = currentScreen == AppScreen.CLOCK,
         isActivityForeground = isActivityForeground
     )
+
+    val shouldKeepScreenOn = remember(
+        preferences.keepScreenAwake,
+        currentScreen,
+        isActivityForeground,
+        batteryState.isCharging
+    ) {
+        KeepScreenAwakePolicy.shouldKeepScreenOn(
+            isPreferenceEnabled = preferences.keepScreenAwake,
+            currentScreen = currentScreen,
+            isActivityForeground = isActivityForeground,
+            isCharging = batteryState.isCharging
+        )
+    }
+
+    LaunchedEffect(shouldKeepScreenOn, window) {
+        if (window != null) {
+            if (shouldKeepScreenOn) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
 
     val shouldObserveMedia = DuoWidgetPolicy.isMediaVisible(
         isPreferenceEnabled = preferences.showMediaPlayer,
@@ -582,23 +588,6 @@ fun StandByAppShell(
                 modifier = modifier
             )
         }
-        AppScreen.FULLSCREEN_PHOTO_FRAME -> {
-            val palette = ClockThemePalette.resolve(
-                isNightMode = preferences.isNightModeEnabled,
-                selectedAccent = preferences.accentColor
-            )
-            FullscreenPhotoFrameScreen(
-                photoUris = preferences.photoFrameUris,
-                isSlideshowActive = isActivityForeground && preferences.showPhotoFrame,
-                isNightMode = preferences.isNightModeEnabled,
-                accentColor = palette.accentColor,
-                formattedTime = formattedTime,
-                showDate = preferences.showDate,
-                onBack = { currentScreen = AppScreen.CLOCK },
-                onChoosePhotos = onLaunchPhotoPicker,
-                modifier = modifier
-            )
-        }
     }
 }
 
@@ -637,6 +626,7 @@ fun FullscreenClockScreen(
     onOpenSettings: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
+    var photoFrameOriginSpace by rememberSaveable { mutableStateOf<DisplaySpace?>(null) }
     val palette = ClockThemePalette.resolve(
         isNightMode = preferences.isNightModeEnabled,
         selectedAccent = preferences.accentColor
@@ -663,10 +653,25 @@ fun FullscreenClockScreen(
         label = "burn_in_pixel_shift_y"
     )
 
+    // Reset origin space when user navigates away from Photo Frame horizontally
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != DisplaySpace.PHOTO_FRAME.pageIndex) {
+            photoFrameOriginSpace = null
+        }
+    }
+
     if (pagerState.currentPage == DisplaySpace.FULLSCREEN_CLOCK.pageIndex) {
         BackHandler {
             coroutineScope.launch {
                 pagerState.animateScrollToPage(DisplaySpace.DUO_LAYOUT.pageIndex)
+            }
+        }
+    } else if (pagerState.currentPage == DisplaySpace.PHOTO_FRAME.pageIndex) {
+        val returnTarget = photoFrameOriginSpace ?: DisplaySpace.FULLSCREEN_CLOCK
+        BackHandler {
+            photoFrameOriginSpace = null
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(returnTarget.pageIndex)
             }
         }
     }
@@ -702,6 +707,8 @@ fun FullscreenClockScreen(
                             mediaWidgetUiState = mediaWidgetUiState,
                             calendarUiState = calendarUiState,
                             weatherUiState = weatherUiState,
+                            isActivityForeground = isActivityForeground,
+                            isDuoLayoutVisible = pagerState.currentPage == DisplaySpace.DUO_LAYOUT.pageIndex,
                             leftPaneWidget = leftPaneWidget,
                             rightPaneWidget = rightPaneWidget,
                             onLeftPaneWidgetChanged = onLeftPaneWidgetChanged,
@@ -716,7 +723,12 @@ fun FullscreenClockScreen(
                             onOpenWeatherPermissionSettings = onOpenWeatherPermissionSettings,
                             onWeatherRetry = onWeatherRetry,
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
-                            onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
+                            onOpenFullscreenPhotoFrame = {
+                                photoFrameOriginSpace = DisplaySpace.DUO_LAYOUT
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(DisplaySpace.PHOTO_FRAME.pageIndex)
+                                }
+                            },
                             onOpenSettings = onOpenSettings,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -744,6 +756,7 @@ fun FullscreenClockScreen(
                     }
                 }
                 DisplaySpace.PHOTO_FRAME -> {
+                    val returnTarget = photoFrameOriginSpace ?: DisplaySpace.FULLSCREEN_CLOCK
                     // Fullscreen Photo Frame: full-bleed without clock pixel shift
                     FullscreenPhotoFrameScreen(
                         photoUris = preferences.photoFrameUris,
@@ -753,8 +766,9 @@ fun FullscreenClockScreen(
                         formattedTime = formattedTime,
                         showDate = preferences.showDate,
                         onBack = {
+                            photoFrameOriginSpace = null
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(DisplaySpace.FULLSCREEN_CLOCK.pageIndex)
+                                pagerState.animateScrollToPage(returnTarget.pageIndex)
                             }
                         },
                         onChoosePhotos = onLaunchPhotoPicker,

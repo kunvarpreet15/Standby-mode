@@ -8,108 +8,183 @@ import org.junit.Test
 class KeepScreenAwakePolicyTest {
 
     @Test
-    fun shouldKeepScreenOn_whenPreferenceEnabled_clockScreen_andForegroundActivity_returnsTrue() {
+    fun shouldKeepScreenOn_whenPreferenceEnabled_clockScreen_foreground_andCharging_returnsTrue() {
         val result = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = true,
             currentScreen = AppScreen.CLOCK,
-            isActivityForeground = true
+            isActivityForeground = true,
+            isCharging = true
         )
         assertTrue(result)
     }
 
     @Test
+    fun shouldKeepScreenOn_whenDeviceUnplugged_returnsFalse() {
+        // Even if preference is enabled, clock is foregrounded, but unplugged -> false
+        val result = KeepScreenAwakePolicy.shouldKeepScreenOn(
+            isPreferenceEnabled = true,
+            currentScreen = AppScreen.CLOCK,
+            isActivityForeground = true,
+            isCharging = false
+        )
+        assertFalse(result)
+    }
+
+    @Test
     fun shouldKeepScreenOn_whenPreferenceDisabled_returnsFalse() {
-        val onClockForeground = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val onClockForegroundCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = false,
             currentScreen = AppScreen.CLOCK,
-            isActivityForeground = true
+            isActivityForeground = true,
+            isCharging = true
         )
-        assertFalse(onClockForeground)
+        assertFalse(onClockForegroundCharging)
 
-        val onClockBackground = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val onClockBackgroundCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = false,
             currentScreen = AppScreen.CLOCK,
-            isActivityForeground = false
+            isActivityForeground = false,
+            isCharging = true
         )
-        assertFalse(onClockBackground)
+        assertFalse(onClockBackgroundCharging)
 
-        val onSettingsForeground = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val onSettingsForegroundCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = false,
             currentScreen = AppScreen.SETTINGS,
-            isActivityForeground = true
+            isActivityForeground = true,
+            isCharging = true
         )
-        assertFalse(onSettingsForeground)
+        assertFalse(onSettingsForegroundCharging)
     }
 
     @Test
     fun shouldKeepScreenOn_whenSettingsScreen_returnsFalse() {
-        val settingsForegroundPrefEnabled = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val settingsForegroundPrefEnabledCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = true,
             currentScreen = AppScreen.SETTINGS,
-            isActivityForeground = true
+            isActivityForeground = true,
+            isCharging = true
         )
-        assertFalse(settingsForegroundPrefEnabled)
+        assertFalse(settingsForegroundPrefEnabledCharging)
 
-        val settingsForegroundPrefDisabled = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val settingsForegroundPrefDisabledCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = false,
             currentScreen = AppScreen.SETTINGS,
-            isActivityForeground = true
+            isActivityForeground = true,
+            isCharging = true
         )
-        assertFalse(settingsForegroundPrefDisabled)
+        assertFalse(settingsForegroundPrefDisabledCharging)
 
-        val settingsBackground = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val settingsBackgroundCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = true,
             currentScreen = AppScreen.SETTINGS,
-            isActivityForeground = false
+            isActivityForeground = false,
+            isCharging = true
         )
-        assertFalse(settingsBackground)
+        assertFalse(settingsBackgroundCharging)
     }
 
     @Test
     fun shouldKeepScreenOn_whenActivityNotInForeground_returnsFalse() {
-        val clockPrefEnabledNotForeground = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val clockPrefEnabledNotForegroundCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = true,
             currentScreen = AppScreen.CLOCK,
-            isActivityForeground = false
+            isActivityForeground = false,
+            isCharging = true
         )
-        assertFalse(clockPrefEnabledNotForeground)
+        assertFalse(clockPrefEnabledNotForegroundCharging)
 
-        val clockPrefDisabledNotForeground = KeepScreenAwakePolicy.shouldKeepScreenOn(
+        val clockPrefDisabledNotForegroundCharging = KeepScreenAwakePolicy.shouldKeepScreenOn(
             isPreferenceEnabled = false,
             currentScreen = AppScreen.CLOCK,
-            isActivityForeground = false
+            isActivityForeground = false,
+            isCharging = true
         )
-        assertFalse(clockPrefDisabledNotForeground)
+        assertFalse(clockPrefDisabledNotForegroundCharging)
     }
 
     @Test
     fun shouldKeepScreenOn_booleanOverload_behavesConsistently() {
+        // All conditions satisfied
         assertTrue(
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = true,
                 isClockScreen = true,
-                isActivityForeground = true
+                isActivityForeground = true,
+                isCharging = true
             )
         )
+        // Unplugged -> false
+        assertFalse(
+            KeepScreenAwakePolicy.shouldKeepScreenOn(
+                isPreferenceEnabled = true,
+                isClockScreen = true,
+                isActivityForeground = true,
+                isCharging = false
+            )
+        )
+        // Preference disabled -> false
         assertFalse(
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = false,
                 isClockScreen = true,
-                isActivityForeground = true
+                isActivityForeground = true,
+                isCharging = true
             )
         )
+        // Not clock screen -> false
         assertFalse(
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = true,
                 isClockScreen = false,
-                isActivityForeground = true
+                isActivityForeground = true,
+                isCharging = true
             )
         )
+        // Not foreground -> false
         assertFalse(
             KeepScreenAwakePolicy.shouldKeepScreenOn(
                 isPreferenceEnabled = true,
                 isClockScreen = true,
-                isActivityForeground = false
+                isActivityForeground = false,
+                isCharging = true
+            )
+        )
+    }
+
+    @Test
+    fun shouldKeepScreenOn_dynamicChargingStateTransitions_updatePolicyResult() {
+        var isCharging = false
+
+        // Device starts on battery -> false
+        assertFalse(
+            KeepScreenAwakePolicy.shouldKeepScreenOn(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                isCharging = isCharging
+            )
+        )
+
+        // User plugs in charger -> becomes true
+        isCharging = true
+        assertTrue(
+            KeepScreenAwakePolicy.shouldKeepScreenOn(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                isCharging = isCharging
+            )
+        )
+
+        // User unplugs charger -> immediately becomes false
+        isCharging = false
+        assertFalse(
+            KeepScreenAwakePolicy.shouldKeepScreenOn(
+                isPreferenceEnabled = true,
+                currentScreen = AppScreen.CLOCK,
+                isActivityForeground = true,
+                isCharging = isCharging
             )
         )
     }
