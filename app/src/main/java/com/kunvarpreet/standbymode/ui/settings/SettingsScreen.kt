@@ -93,6 +93,7 @@ fun SettingsScreen(
     onLaunchPhotoPicker: () -> Unit = {},
     onRemoveAllPhotos: () -> Unit = {},
     onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
+    onOpenDreamSettings: () -> Unit = {},
     onRevisitOnboarding: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
@@ -675,6 +676,7 @@ fun SettingsScreen(
                                 onLaunchPhotoPicker = onLaunchPhotoPicker,
                                 onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true },
                                 onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
+                                onOpenDreamSettings = onOpenDreamSettings,
                                 onRevisitOnboarding = onRevisitOnboarding
                             )
                             Spacer(modifier = Modifier.height(24.dp))
@@ -720,6 +722,7 @@ fun SettingsScreen(
                             onLaunchPhotoPicker = onLaunchPhotoPicker,
                             onRemoveAllPhotos = { showRemoveAllPhotosConfirmationDialog = true },
                             onOpenFullscreenPhotoFrame = onOpenFullscreenPhotoFrame,
+                            onOpenDreamSettings = onOpenDreamSettings,
                             onRevisitOnboarding = onRevisitOnboarding
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -801,6 +804,7 @@ private fun SettingsContent(
     onLaunchPhotoPicker: () -> Unit = {},
     onRemoveAllPhotos: () -> Unit = {},
     onOpenFullscreenPhotoFrame: (() -> Unit)? = null,
+    onOpenDreamSettings: () -> Unit = {},
     onRevisitOnboarding: () -> Unit = {}
 ) {
     // 1. Clock Face Selection
@@ -996,7 +1000,25 @@ private fun SettingsContent(
         )
     }
 
-    // 10. Setup & Permissions Guide
+    // 10. System Screensaver (Daydream)
+    SettingsSection(title = "System Screensaver (Daydream)") {
+        SettingsClickableRow(
+            title = "Configure System Screensaver",
+            subtitle = "Use StandByMode as Android's official screensaver when docked or charging",
+            onClick = onOpenDreamSettings,
+            accentColor = accentColor
+        )
+        Text(
+            text = "System settings govern when screensavers start (e.g., while docked or charging). If your device does not open Screen Saver settings directly, look under Android Settings > Display > Screen saver.",
+            color = StandByTextMuted,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.SansSerif,
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+        )
+    }
+
+    // 11. Setup & Permissions Guide
     SettingsSection(title = "Setup & Permissions Guide") {
         SettingsClickableRow(
             title = "Revisit Onboarding Walkthrough",

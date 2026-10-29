@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -63,6 +64,7 @@ import com.kunvarpreet.standbymode.core.calendar.CalendarRepository
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.display.DisplaySpace
 import com.kunvarpreet.standbymode.core.display.KeepScreenAwakePolicy
+import com.kunvarpreet.standbymode.core.dream.DreamPolicy
 import com.kunvarpreet.standbymode.core.media.MediaNotificationListenerService
 import com.kunvarpreet.standbymode.core.media.MediaSessionRepository
 import com.kunvarpreet.standbymode.core.media.MediaWidgetUiState
@@ -167,10 +169,24 @@ fun StandByAppShell(
     }
     val preferences = preferencesNullable!!
 
+    val context = LocalContext.current
+    val activity = remember(context) {
+        generateSequence(context) { (it as? ContextWrapper)?.baseContext }
+            .filterIsInstance<Activity>()
+            .firstOrNull()
+    }
+    val window = activity?.window
+
     var currentScreen by rememberSaveable {
-        mutableStateOf(
-            if (preferences.isOnboardingCompleted) AppScreen.CLOCK else AppScreen.ONBOARDING
-        )
+        val target = activity?.intent?.getStringExtra(DreamPolicy.EXTRA_TARGET_SCREEN)
+        if (target == DreamPolicy.SCREEN_SETTINGS) {
+            activity.intent?.removeExtra(DreamPolicy.EXTRA_TARGET_SCREEN)
+            mutableStateOf(AppScreen.SETTINGS)
+        } else {
+            mutableStateOf(
+                if (preferences.isOnboardingCompleted) AppScreen.CLOCK else AppScreen.ONBOARDING
+            )
+        }
     }
 
     // Hoist pager state across screen navigation so returning from Settings restores the viewed display space
@@ -179,14 +195,6 @@ fun StandByAppShell(
     ) {
         DisplaySpace.entries.size
     }
-
-    val context = LocalContext.current
-    val activity = remember(context) {
-        generateSequence(context) { (it as? ContextWrapper)?.baseContext }
-            .filterIsInstance<Activity>()
-            .firstOrNull()
-    }
-    val window = activity?.window
 
     var launchSource by rememberSaveable {
         val isAuto = activity?.intent?.getBooleanExtra(
@@ -324,6 +332,10 @@ fun StandByAppShell(
     LaunchedEffect(isActivityForeground) {
         if (isActivityForeground) {
             val currentIntent = activity?.intent
+            if (currentIntent?.getStringExtra(DreamPolicy.EXTRA_TARGET_SCREEN) == DreamPolicy.SCREEN_SETTINGS) {
+                currentScreen = AppScreen.SETTINGS
+                currentIntent.removeExtra(DreamPolicy.EXTRA_TARGET_SCREEN)
+            }
             if (currentIntent?.getBooleanExtra(AutoActivationPolicy.EXTRA_AUTO_ACTIVATED, false) == true) {
                 launchSource = LaunchSource.AUTO_ACTIVATED
                 currentIntent.removeExtra(AutoActivationPolicy.EXTRA_AUTO_ACTIVATED)
@@ -672,6 +684,16 @@ fun StandByAppShell(
                     currentScreen = AppScreen.CLOCK
                     coroutineScope.launch {
                         pagerState.animateScrollToPage(DisplaySpace.PHOTO_FRAME.pageIndex)
+                    }
+                },
+                onOpenDreamSettings = {
+                    val launched = DreamPolicy.openDreamSettingsSafely(context)
+                    if (!launched) {
+                        Toast.makeText(
+                            context,
+                            "Please open Android Settings > Display > Screen saver",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 },
                 onRevisitOnboarding = { currentScreen = AppScreen.ONBOARDING },
