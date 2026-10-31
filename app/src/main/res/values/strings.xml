@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">StandBy Mode</string>
+    <string name="device_admin_description">Allows StandByMode to lock the device into ambient display when the charging notification is tapped.</string>
+    <string name="device_admin_explanation">StandByMode uses the Force Lock policy to secure the screen when opening from the charging notification.</string>
 </resources>

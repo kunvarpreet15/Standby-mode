@@ -52,6 +52,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.kunvarpreet.standbymode.core.admin.StandByDeviceAdminManager
 import com.kunvarpreet.standbymode.core.charging.ChargingNotificationManager
 import com.kunvarpreet.standbymode.core.media.MediaNotificationListenerService
 import com.kunvarpreet.standbymode.core.media.MediaSessionPolicy
@@ -83,6 +84,7 @@ fun SettingsScreen(
     onNightModeChanged: (Boolean) -> Unit,
     onShowChargingNotificationChanged: (Boolean) -> Unit,
     onAutoActivateChanged: (Boolean) -> Unit = {},
+    onLockDeviceOnNotificationActivationChanged: (Boolean) -> Unit = {},
     onBurnInProtectionChanged: (Boolean) -> Unit = {},
     onKeepScreenAwakeChanged: (Boolean) -> Unit = {},
     onShowBatteryStatusChanged: (Boolean) -> Unit = {},
@@ -222,10 +224,35 @@ fun SettingsScreen(
     var waitingForMediaPermissionReturn by remember { mutableStateOf(false) }
     var showMediaPermissionDeniedFeedback by remember { mutableStateOf(false) }
 
+    var showDeviceAdminSetupDialog by remember { mutableStateOf(false) }
+
+    val deviceAdminLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        val isActive = StandByDeviceAdminManager.isDeviceAdminActive(context)
+        onLockDeviceOnNotificationActivationChanged(isActive)
+    }
+
+    val onToggleLockDevice: (Boolean) -> Unit = { shouldEnable ->
+        if (shouldEnable) {
+            val isActive = StandByDeviceAdminManager.isDeviceAdminActive(context)
+            if (isActive) {
+                onLockDeviceOnNotificationActivationChanged(true)
+            } else {
+                showDeviceAdminSetupDialog = true
+            }
+        } else {
+            onLockDeviceOnNotificationActivationChanged(false)
+        }
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                if (preferences.lockDeviceOnNotificationActivation && !StandByDeviceAdminManager.isDeviceAdminActive(context)) {
+                    onLockDeviceOnNotificationActivationChanged(false)
+                }
                 if (waitingForMediaPermissionReturn) {
                     waitingForMediaPermissionReturn = false
                     if (MediaSessionPolicy.isNotificationListenerGranted(context)) {
@@ -599,6 +626,61 @@ fun SettingsScreen(
         )
     }
 
+    if (showDeviceAdminSetupDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeviceAdminSetupDialog = false },
+            title = {
+                Text(
+                    text = "Activate Device Administrator",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "Locking the device on notification activation requires enabling StandByMode as a Device Administrator with the 'Force Lock' policy.\n\nStandByMode only invokes lockNow() when you tap the charging notification to enter fullscreen ambient mode.\n\nNote: Android security policies govern behavior over secure keyguards (PIN, Pattern, or Fingerprint). On secured devices, locking secures the device and behavior over the secure keyguard depends on system settings.\n\nYou can deactivate this administrator at any time in system settings.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeviceAdminSetupDialog = false
+                        try {
+                            deviceAdminLauncher.launch(
+                                StandByDeviceAdminManager.createAddDeviceAdminIntent(context)
+                            )
+                        } catch (e: Exception) {
+                            android.util.Log.e("SettingsScreen", "Failed to launch device admin activation", e)
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Activate Admin",
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeviceAdminSetupDialog = false }) {
+                    Text(
+                        text = "Cancel",
+                        color = StandByTextMuted,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -666,6 +748,7 @@ fun SettingsScreen(
                                 onNightModeChanged = onNightModeChanged,
                                 onToggleChargingNotification = onToggleChargingNotification,
                                 onAutoActivateChanged = onAutoActivateChanged,
+                                onToggleLockDevice = onToggleLockDevice,
                                 onBurnInProtectionChanged = onBurnInProtectionChanged,
                                 onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                                 onShowBatteryStatusChanged = onShowBatteryStatusChanged,
@@ -712,6 +795,7 @@ fun SettingsScreen(
                             onNightModeChanged = onNightModeChanged,
                             onToggleChargingNotification = onToggleChargingNotification,
                             onAutoActivateChanged = onAutoActivateChanged,
+                            onToggleLockDevice = onToggleLockDevice,
                             onBurnInProtectionChanged = onBurnInProtectionChanged,
                             onKeepScreenAwakeChanged = onKeepScreenAwakeChanged,
                             onShowBatteryStatusChanged = onShowBatteryStatusChanged,
@@ -794,6 +878,7 @@ private fun SettingsContent(
     onNightModeChanged: (Boolean) -> Unit,
     onToggleChargingNotification: (Boolean) -> Unit,
     onAutoActivateChanged: (Boolean) -> Unit = {},
+    onToggleLockDevice: (Boolean) -> Unit = {},
     onBurnInProtectionChanged: (Boolean) -> Unit,
     onKeepScreenAwakeChanged: (Boolean) -> Unit,
     onShowBatteryStatusChanged: (Boolean) -> Unit,
@@ -996,6 +1081,13 @@ private fun SettingsContent(
             subtitle = "Enter StandBy Mode when charging horizontally; dismiss when unplugged or upright",
             checked = preferences.autoActivateOnChargeAndLandscape,
             onCheckedChange = onAutoActivateChanged,
+            accentColor = accentColor
+        )
+        SettingsToggleRow(
+            title = "Lock device on notification activation",
+            subtitle = "Request device lock via Device Admin and enter immersive fullscreen when tapping charging notification",
+            checked = preferences.lockDeviceOnNotificationActivation,
+            onCheckedChange = onToggleLockDevice,
             accentColor = accentColor
         )
     }

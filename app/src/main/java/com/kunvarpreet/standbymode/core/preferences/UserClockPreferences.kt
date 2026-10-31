@@ -107,5 +107,6 @@ data class UserClockPreferences(
     val showPhotoFrame: Boolean = false,
     val photoFrameUris: List<String> = emptyList(),
     val autoActivateOnChargeAndLandscape: Boolean = false,
-    val isOnboardingCompleted: Boolean = false
+    val isOnboardingCompleted: Boolean = false,
+    val lockDeviceOnNotificationActivation: Boolean = false
 )

@@ -32,6 +32,30 @@ class UserClockPreferencesTest {
         assertEquals(emptyList<String>(), prefs.photoFrameUris)
         assertEquals(false, prefs.autoActivateOnChargeAndLandscape)
         assertEquals(false, prefs.isOnboardingCompleted)
+        assertEquals(false, prefs.lockDeviceOnNotificationActivation)
+    }
+
+    @Test
+    fun lockDeviceOnNotificationActivation_toggling_preservesOtherPreferences() {
+        val initial = UserClockPreferences()
+        val enabled = initial.copy(lockDeviceOnNotificationActivation = true)
+        assertEquals(true, enabled.lockDeviceOnNotificationActivation)
+        assertEquals(initial.clockFace, enabled.clockFace)
+        assertEquals(initial.is24Hour, enabled.is24Hour)
+        assertEquals(initial.showSeconds, enabled.showSeconds)
+        assertEquals(initial.showDate, enabled.showDate)
+        assertEquals(initial.accentColor, enabled.accentColor)
+        assertEquals(initial.isNightModeEnabled, enabled.isNightModeEnabled)
+        assertEquals(initial.showChargingNotification, enabled.showChargingNotification)
+        assertEquals(initial.isBurnInProtectionEnabled, enabled.isBurnInProtectionEnabled)
+        assertEquals(initial.keepScreenAwake, enabled.keepScreenAwake)
+        assertEquals(initial.showBatteryStatus, enabled.showBatteryStatus)
+        assertEquals(initial.showMediaPlayer, enabled.showMediaPlayer)
+        assertEquals(initial.showCalendarAgenda, enabled.showCalendarAgenda)
+        assertEquals(initial.showWeatherWidget, enabled.showWeatherWidget)
+        assertEquals(initial.showPhotoFrame, enabled.showPhotoFrame)
+        assertEquals(initial.autoActivateOnChargeAndLandscape, enabled.autoActivateOnChargeAndLandscape)
+        assertEquals(initial.isOnboardingCompleted, enabled.isOnboardingCompleted)
     }
 
     @Test

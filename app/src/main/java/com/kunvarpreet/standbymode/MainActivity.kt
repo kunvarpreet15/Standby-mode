@@ -30,6 +30,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -46,16 +50,24 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kunvarpreet.standbymode.core.activation.AutoActivationPolicy
 import com.kunvarpreet.standbymode.core.activation.DeviceOrientation
 import com.kunvarpreet.standbymode.core.activation.LaunchSource
+import com.kunvarpreet.standbymode.core.admin.DeviceAdminPolicy
+import com.kunvarpreet.standbymode.core.admin.LockActivationDecision
+import com.kunvarpreet.standbymode.core.admin.StandByDeviceAdminManager
 import com.kunvarpreet.standbymode.core.battery.BatteryState
 import com.kunvarpreet.standbymode.core.battery.rememberBatteryState
 import com.kunvarpreet.standbymode.core.burnin.BurnInProtectionPolicy
@@ -95,6 +107,9 @@ import com.kunvarpreet.standbymode.ui.settings.SettingsButton
 import com.kunvarpreet.standbymode.ui.settings.SettingsScreen
 import com.kunvarpreet.standbymode.ui.theme.StandByBackground
 import com.kunvarpreet.standbymode.ui.theme.StandByModeTheme
+import com.kunvarpreet.standbymode.ui.theme.StandBySurfaceCard
+import com.kunvarpreet.standbymode.ui.theme.StandByTextMuted
+import com.kunvarpreet.standbymode.ui.theme.StandByTextPrimary
 import kotlinx.coroutines.launch
 
 /**
@@ -231,12 +246,18 @@ fun StandByAppShell(
     var isActivityForeground by remember {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
     }
+    var isDeviceAdminActive by remember {
+        mutableStateOf(StandByDeviceAdminManager.isDeviceAdminActive(context))
+    }
+    var hasExecutedNotificationLock by rememberSaveable { mutableStateOf(false) }
+    var showAdminSetupRequiredDialog by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     isActivityForeground = true
+                    isDeviceAdminActive = StandByDeviceAdminManager.isDeviceAdminActive(context)
                     mediaSessionRepository.refreshAccess()
                     calendarRepository.refresh()
                     if (weatherRepository.hasLocationPermission() && preferences.showWeatherWidget) {
@@ -345,8 +366,65 @@ fun StandByAppShell(
             }
             if (currentIntent?.getBooleanExtra(AutoActivationPolicy.EXTRA_AUTO_ACTIVATED, false) == true) {
                 launchSource = LaunchSource.AUTO_ACTIVATED
+                hasExecutedNotificationLock = false
                 currentIntent.removeExtra(AutoActivationPolicy.EXTRA_AUTO_ACTIVATED)
             }
+        }
+    }
+
+    // Fullscreen Immersive Mode: hide status and navigation bars during auto-activated ambient session
+    val insetsController = remember(window) {
+        window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+    }
+    val shouldHideSystemBars = remember(launchSource, currentScreen) {
+        DeviceAdminPolicy.shouldHideSystemBars(launchSource, currentScreen)
+    }
+
+    LaunchedEffect(shouldHideSystemBars, insetsController) {
+        if (insetsController != null) {
+            if (shouldHideSystemBars) {
+                insetsController.systemBarsBehavior = DeviceAdminPolicy.resolveSystemBarsBehavior()
+                insetsController.hide(WindowInsetsCompat.Type.systemBars())
+            } else {
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
+    DisposableEffect(window) {
+        onDispose {
+            window?.let {
+                WindowCompat.getInsetsController(it, it.decorView).show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
+    // Opt-in Device Admin Lock Evaluation
+    val lockDecision = remember(
+        preferences.lockDeviceOnNotificationActivation,
+        launchSource,
+        isDeviceAdminActive,
+        hasExecutedNotificationLock
+    ) {
+        DeviceAdminPolicy.evaluateLockDecision(
+            isLockPreferenceEnabled = preferences.lockDeviceOnNotificationActivation,
+            launchSource = launchSource,
+            isAdminActive = isDeviceAdminActive,
+            hasExecutedLock = hasExecutedNotificationLock
+        )
+    }
+
+    LaunchedEffect(lockDecision) {
+        when (lockDecision) {
+            LockActivationDecision.EXECUTE_LOCK -> {
+                hasExecutedNotificationLock = true
+                StandByDeviceAdminManager.lockDeviceNow(context)
+            }
+            LockActivationDecision.SHOW_ADMIN_SETUP_REQUIRED -> {
+                hasExecutedNotificationLock = true
+                showAdminSetupRequiredDialog = true
+            }
+            LockActivationDecision.PROCEED_WITHOUT_LOCK -> {}
         }
     }
 
@@ -664,6 +742,9 @@ fun StandByAppShell(
                 onAutoActivateChanged = { autoActivate ->
                     coroutineScope.launch { repository.updateAutoActivateOnChargeAndLandscape(autoActivate) }
                 },
+                onLockDeviceOnNotificationActivationChanged = { lockEnabled ->
+                    coroutineScope.launch { repository.updateLockDeviceOnNotificationActivation(lockEnabled) }
+                },
                 onBurnInProtectionChanged = { isBurnInProtectionEnabled ->
                     coroutineScope.launch { repository.updateBurnInProtection(isBurnInProtectionEnabled) }
                 },
@@ -737,6 +818,61 @@ fun StandByAppShell(
                 modifier = modifier
             )
         }
+    }
+
+    if (showAdminSetupRequiredDialog) {
+        AlertDialog(
+            onDismissRequest = { showAdminSetupRequiredDialog = false },
+            title = {
+                Text(
+                    text = "Device Admin Setup Required",
+                    color = StandByTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            text = {
+                Text(
+                    text = "Device lock on notification activation is enabled, but StandByMode is not currently active as a Device Administrator.\n\nActivate Device Admin with the Force Lock policy to allow StandByMode to lock your screen when opening from charging notifications.",
+                    color = StandByTextMuted,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    fontFamily = FontFamily.SansSerif
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAdminSetupRequiredDialog = false
+                        try {
+                            context.startActivity(
+                                StandByDeviceAdminManager.createAddDeviceAdminIntent(context)
+                            )
+                        } catch (e: Exception) {
+                            android.util.Log.e("MainActivity", "Failed to launch device admin settings", e)
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Configure Admin",
+                        color = StandByTextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdminSetupRequiredDialog = false }) {
+                    Text(
+                        text = "Dismiss",
+                        color = StandByTextMuted,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                }
+            },
+            containerColor = StandBySurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 

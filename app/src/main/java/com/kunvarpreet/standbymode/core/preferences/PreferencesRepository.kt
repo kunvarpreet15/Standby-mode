@@ -39,6 +39,7 @@ class PreferencesRepository(private val context: Context) {
         val PHOTO_FRAME_URIS = stringPreferencesKey("photo_frame_uris")
         val AUTO_ACTIVATE_ON_CHARGE_AND_LANDSCAPE = booleanPreferencesKey("auto_activate_on_charge_and_landscape")
         val IS_ONBOARDING_COMPLETED = booleanPreferencesKey("is_onboarding_completed")
+        val LOCK_DEVICE_ON_NOTIFICATION_ACTIVATION = booleanPreferencesKey("lock_device_on_notification_activation")
     }
 
     val preferencesFlow: Flow<UserClockPreferences> = context.clockDataStore.data
@@ -68,6 +69,7 @@ class PreferencesRepository(private val context: Context) {
             val photoFrameUris = PhotoFrameLogic.deserializeUriList(rawPhotoUris)
             val autoActivateOnChargeAndLandscape = preferences[PreferencesKeys.AUTO_ACTIVATE_ON_CHARGE_AND_LANDSCAPE] ?: false
             val isOnboardingCompleted = preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] ?: false
+            val lockDeviceOnNotificationActivation = preferences[PreferencesKeys.LOCK_DEVICE_ON_NOTIFICATION_ACTIVATION] ?: false
 
             UserClockPreferences(
                 clockFace = ClockFaceType.fromName(clockFaceName),
@@ -86,7 +88,8 @@ class PreferencesRepository(private val context: Context) {
                 showPhotoFrame = showPhotoFrame,
                 photoFrameUris = photoFrameUris,
                 autoActivateOnChargeAndLandscape = autoActivateOnChargeAndLandscape,
-                isOnboardingCompleted = isOnboardingCompleted
+                isOnboardingCompleted = isOnboardingCompleted,
+                lockDeviceOnNotificationActivation = lockDeviceOnNotificationActivation
             )
         }
 
@@ -198,6 +201,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateOnboardingCompleted(completed: Boolean) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] = completed
+        }
+    }
+
+    suspend fun updateLockDeviceOnNotificationActivation(enabled: Boolean) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.LOCK_DEVICE_ON_NOTIFICATION_ACTIVATION] = enabled
         }
     }
 }
