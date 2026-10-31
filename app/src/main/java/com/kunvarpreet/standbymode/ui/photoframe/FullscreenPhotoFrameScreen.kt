@@ -206,7 +206,7 @@ private fun ExitFullscreenButton(
             if (isNightMode) StandByNightTextMuted.copy(alpha = 0.25f) else Color(0x33FFFFFF)
         ),
         modifier = modifier
-            .size(44.dp)
+            .size(48.dp)
             .semantics {
                 contentDescription = "Exit fullscreen photo frame"
             }
@@ -216,7 +216,7 @@ private fun ExitFullscreenButton(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
                 tint = if (isNightMode) StandByNightText else StandByTextPrimary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
     }

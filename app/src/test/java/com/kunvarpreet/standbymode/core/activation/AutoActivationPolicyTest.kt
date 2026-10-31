@@ -387,4 +387,9 @@ class AutoActivationPolicyTest {
         assertEquals(1, DisplaySpace.FULLSCREEN_CLOCK.pageIndex)
         assertEquals(2, DisplaySpace.PHOTO_FRAME.pageIndex)
     }
+
+    @Test
+    fun extraAutoActivated_constantMatchesExpectedKey() {
+        assertEquals("com.kunvarpreet.standbymode.extra.AUTO_ACTIVATED", AutoActivationPolicy.EXTRA_AUTO_ACTIVATED)
+    }
 }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -44,7 +45,12 @@ fun timeFlow(
         addAction(Intent.ACTION_TIMEZONE_CHANGED)
     }
 
-    context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+    ContextCompat.registerReceiver(
+        context,
+        receiver,
+        filter,
+        ContextCompat.RECEIVER_NOT_EXPORTED
+    )
 
     // Initial emission on collection
     trySend(Instant.now())

@@ -221,22 +221,24 @@ class WeatherRepository(
     private suspend fun resolveLocality(latitude: Double, longitude: Double): String {
         return try {
             val geocoder = Geocoder(context, Locale.getDefault())
-            suspendCancellableCoroutine { continuation ->
-                geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
-                    override fun onGeocode(addresses: MutableList<Address>) {
-                        val addr = addresses.firstOrNull()
-                        val locality = addr?.locality ?: addr?.subAdminArea ?: addr?.adminArea ?: "Local weather"
-                        if (continuation.isActive) {
-                            continuation.resume(locality)
+            withTimeoutOrNull(5000L.milliseconds) {
+                suspendCancellableCoroutine { continuation ->
+                    geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: MutableList<Address>) {
+                            val addr = addresses.firstOrNull()
+                            val locality = addr?.locality ?: addr?.subAdminArea ?: addr?.adminArea ?: "Local weather"
+                            if (continuation.isActive) {
+                                continuation.resume(locality)
+                            }
                         }
-                    }
-                    override fun onError(errorMessage: String?) {
-                        if (continuation.isActive) {
-                            continuation.resume("Local weather")
+                        override fun onError(errorMessage: String?) {
+                            if (continuation.isActive) {
+                                continuation.resume("Local weather")
+                            }
                         }
-                    }
-                })
-            }
+                    })
+                }
+            } ?: "Local weather"
         } catch (e: Exception) {
             Log.w(tag, "Geocoder lookup failed, using fallback locality", e)
             "Local weather"

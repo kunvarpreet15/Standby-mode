@@ -145,7 +145,7 @@ fun PhotoFrameWidget(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(8.dp)
-                    .size(36.dp)
+                    .size(48.dp)
                     .semantics {
                         contentDescription = "Expand photo frame to fullscreen"
                     }
@@ -155,7 +155,7 @@ fun PhotoFrameWidget(
                         painter = painterResource(id = R.drawable.ic_fullscreen),
                         contentDescription = null,
                         tint = if (isNightMode) StandByNightText else Color.White,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

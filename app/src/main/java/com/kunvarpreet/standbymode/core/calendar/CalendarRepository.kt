@@ -103,6 +103,7 @@ class CalendarRepository(
         }
         contentObserver = null
         activeQueryJob?.cancel()
+        activeQueryJob = null
     }
 
     /**

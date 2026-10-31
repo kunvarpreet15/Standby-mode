@@ -109,15 +109,20 @@ enum class AppScreen {
 class MainActivity : ComponentActivity() {
 
     private lateinit var preferencesRepository: PreferencesRepository
+    private var currentIntentState by mutableStateOf<Intent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         preferencesRepository = PreferencesRepository(applicationContext)
+        currentIntentState = intent
 
         enableEdgeToEdge()
         setContent {
             StandByModeTheme {
-                StandByAppShell(repository = preferencesRepository)
+                StandByAppShell(
+                    repository = preferencesRepository,
+                    incomingIntent = currentIntentState
+                )
             }
         }
     }
@@ -125,6 +130,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        currentIntentState = intent
     }
 
     override fun onStart() {
@@ -152,6 +158,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun StandByAppShell(
     repository: PreferencesRepository,
+    incomingIntent: Intent? = null,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -329,9 +336,9 @@ fun StandByAppShell(
         isActivityForeground = isActivityForeground
     )
 
-    LaunchedEffect(isActivityForeground) {
+    LaunchedEffect(isActivityForeground, incomingIntent) {
         if (isActivityForeground) {
-            val currentIntent = activity?.intent
+            val currentIntent = incomingIntent ?: activity?.intent
             if (currentIntent?.getStringExtra(DreamPolicy.EXTRA_TARGET_SCREEN) == DreamPolicy.SCREEN_SETTINGS) {
                 currentScreen = AppScreen.SETTINGS
                 currentIntent.removeExtra(DreamPolicy.EXTRA_TARGET_SCREEN)

@@ -107,6 +107,8 @@ class MediaSessionRepository(private val context: Context) {
         if (!isObserving) return
         isObserving = false
 
+        mainHandler.removeCallbacksAndMessages(null)
+
         try {
             mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
         } catch (e: Exception) {
@@ -139,6 +141,8 @@ class MediaSessionRepository(private val context: Context) {
     }
 
     private fun handleActiveSessionsChanged(controllers: List<MediaController>) {
+        if (!isObserving) return
+
         val candidates = controllers.map { controller ->
             val playbackState = try {
                 controller.playbackState
