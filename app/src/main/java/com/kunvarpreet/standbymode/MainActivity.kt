@@ -172,9 +172,9 @@ class MainActivity : ComponentActivity() {
  */
 @Composable
 fun StandByAppShell(
+    modifier: Modifier = Modifier,
     repository: PreferencesRepository,
-    incomingIntent: Intent? = null,
-    modifier: Modifier = Modifier
+    incomingIntent: Intent? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val preferencesNullable by repository.preferencesFlow.collectAsState(
